@@ -44,11 +44,11 @@ for airfoil_name in os.listdir(dirs.RES_DIR):
         dir_name = "{}_{}_{}".format(airfoil_name, angle, chord) 
         dir_path = dirs.out_path("images", dir_name)
         if not op.isdir(dir_path):
-            coords = load_coords(airfoil_name, False)
-            airfoil = Airfoil([AirfoilElement([0,0], angle, chord)])
-            airfoil.set_profile_coords(coords);
-
             try:
+                coords = load_coords(airfoil_name, False)
+                airfoil = Airfoil([AirfoilElement([0,0], angle, chord)])
+                airfoil.set_profile_coords(coords);
+
                 simOut = sim.analyze_airfoil(airfoil,
                              presets.coarse_mesh_scheme(airfoil))
                 os.mkdir(dir_path)
