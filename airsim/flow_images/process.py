@@ -52,9 +52,9 @@ for i in range(len(airfoil_dataset)):
     # Make sdf tensor
     binmask = airfoil_mask.numpy()
     binmask = binmask.astype(int)
-    negfoil = scipy.ndimage.morphology.distance_transform_edt(binmask)
-    binmaskcomp = np.invert(binmask)
-    posfoil = scipy.ndimage.morphology.distance_transform_edt(binmaskcomp)
+    posfoil = scipy.ndimage.morphology.distance_transform_edt(binmask)
+    binmaskcomp = 1 - binmask
+    negfoil = scipy.ndimage.morphology.distance_transform_edt(binmaskcomp)
     sdf = np.subtract(posfoil, negfoil)
     sdf_mask = torch.tensor(sdf) 
     torch.save(sdf_mask, dirs.out_path('processed', 'sdf_{}.pt'.format(i)))
