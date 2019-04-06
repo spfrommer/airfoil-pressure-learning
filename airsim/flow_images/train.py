@@ -126,6 +126,15 @@ class PaperCNN(torch.nn.Module):
             print("All zeros!")
         return x
 
+def airfoilmseloss(pred, actual):
+    foilmask = torch.where(actual == -1000, 0, 1)
+    pred = foilmask * pred
+    actual = foilmask * actual
+    
+    diff = pred - actual
+    diffsq = torch.pow(diff, 2)
+    return torch.mean(diffsq)
+
 epochs = 1
 batch_size = 4
 learning_rate = 0.0001
