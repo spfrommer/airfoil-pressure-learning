@@ -7,6 +7,8 @@ sys.path.append(path)
 
 import torch
 import numpy as np
+import scipy
+import scipy.ndimage
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 from PIL import Image
@@ -42,9 +44,21 @@ for i in range(len(airfoil_dataset)):
 
     flattened = torch.sum(tensor, dim = 0) 
     airfoil_mask = torch.where(flattened == 0, flattened, torch.ones_like(flattened))
+    # For tomorrow, add in a few lines here to make the SDF image
+    # We need to make two binary masks- one with the airfoil as 1, and one with 
+    # the airfoil as 0. Then find the SDF for both of these using the scipy function, 
+    # and then subtract one from the other to get the complete SDF with negative values 
+    # within the borders of the airfoil
+    binmask = airfoil_mask.numpy()
+    negfoil = scipy.ndimage.morphology.distance_transform_edt(binmask)
+    binmaskcomp = np.invert(binmask)
+    posfoil = scipy.ndimage.morphology_distance_transform_edt(binmaskcomp)
+    sdf = np.subtract(posfoil, negfoil)
+    sdftensor = torch.tensor(sdf) 
 
     #utils.save_image(airfoil_mask, dirs.out_path('processed', 'a_{}.png'.format(i)))
     torch.save(airfoil_mask, dirs.out_path('processed', 'a_{}.pt'.format(i)))
+    torch.save(sdftensor, dirs.out_path('processed', 'sdf_{}.pt'.format(i)))
 
     pressure_range = (-1000, 1000)
     range_diff = pressure_range[1] - pressure_range[0] 
