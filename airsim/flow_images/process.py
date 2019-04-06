@@ -23,6 +23,7 @@ class AirfoilDataset(Dataset):
     def __init__(self, root_path):
         self.root_path = root_path
         self.image_folders = os.listdir(root_path)
+	self.image_folders.remove('.DS_Store')
 
     def __len__(self):
         return len(self.image_folders)
@@ -48,11 +49,12 @@ for i in range(len(airfoil_dataset)):
     # We need to make two binary masks- one with the airfoil as 1, and one with 
     # the airfoil as 0. Then find the SDF for both of these using the scipy function, 
     # and then subtract one from the other to get the complete SDF with negative values 
-    # within the borders of the airfoil
+    # within the borders of the airfoilk
     binmask = airfoil_mask.numpy()
+    binmask = binmask.astype(int)
     negfoil = scipy.ndimage.morphology.distance_transform_edt(binmask)
     binmaskcomp = np.invert(binmask)
-    posfoil = scipy.ndimage.morphology_distance_transform_edt(binmaskcomp)
+    posfoil = scipy.ndimage.morphology.distance_transform_edt(binmaskcomp)
     sdf = np.subtract(posfoil, negfoil)
     sdftensor = torch.tensor(sdf) 
 
