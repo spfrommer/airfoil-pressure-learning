@@ -4,3 +4,4 @@ numpy
 colorama
 lmxl
 matplotlib
+scipy
