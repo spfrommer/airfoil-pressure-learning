@@ -27,6 +27,9 @@ warnings.filterwarnings("ignore")
 
 import airsim.dirs as dirs
 
+sdf_samples = False
+test_trained_net = True
+
 class BinaryPressureDataset(Dataset):
     def __init__(self, root_path):
         self.root_path = root_path
@@ -49,8 +52,12 @@ class BinaryPressureDataset(Dataset):
 
     def __getitem__(self, i):
         sample = self.samples[i]
+        
+        if sdf_samples:
+            airfoil_file = 'sdf_{}.pt'.format(sample[0]) 
+        else:
+            airfoil_file = 'a_{}.pt'.format(sample[0]) 
 
-        airfoil_file = 'a_{}.pt'.format(sample[0]) 
         pressure_file = 'p_{}.pt'.format(sample[0]) 
         airfoil = torch.load(op.join(self.root_path, airfoil_file))
         pressure = torch.load(op.join(self.root_path, pressure_file))
@@ -148,7 +155,7 @@ def airfoilmseloss(pred, actual):
     diffsq = torch.pow(diff, 2)
     return torch.mean(diffsq)
 
-epochs = 0
+epochs = 1
 batch_size = 4
 learning_rate = 0.0001
 
@@ -212,19 +219,20 @@ for epoch in range(epochs):
     
 logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
 
-airfoil, pressure = test_dataset[11]
-airfoil, pressure = Variable(airfoil), Variable(pressure)
-airfoil = airfoil.view(1, 1, 256, 256)
-pressure = pressure.view(1, 1, 256, 256)
+if test_trained_net:
+    airfoil, pressure = test_dataset[11]
+    airfoil, pressure = Variable(airfoil), Variable(pressure)
+    airfoil = airfoil.view(1, 1, 256, 256)
+    pressure = pressure.view(1, 1, 256, 256)
 
-logger.info(airfoil)
-utils.save_image(airfoil, 'airfoil.png')
+    logger.info(airfoil)
+    utils.save_image(airfoil, 'airfoil.png')
 
-logger.info(pressure)
-pressure = (pressure / 400) + 0.5
-utils.save_image(pressure, 'pressure.png')
+    logger.info(pressure)
+    pressure = (pressure / 400) + 0.5
+    utils.save_image(pressure, 'pressure.png')
 
-#pressure_pred = net(airfoil)
-#logger.info(pressure_pred)
-#pressure_pred = (pressure_pred / 200) + 0.5
-#utils.save_image(pressure_pred, 'pressure_pred.png')
+    pressure_pred = net(airfoil)
+    logger.info(pressure_pred)
+    pressure_pred = (pressure_pred / 200) + 0.5
+    utils.save_image(pressure_pred, 'pressure_pred.png')
