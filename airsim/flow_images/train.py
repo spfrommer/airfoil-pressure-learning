@@ -27,6 +27,8 @@ warnings.filterwarnings("ignore")
 
 import airsim.dirs as dirs
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 sdf_samples = False
 test_trained_net = True
 
@@ -44,7 +46,7 @@ class BinaryPressureDataset(Dataset):
         samples = np.repeat(nums, 10)
         transx = np.round(80 * (np.random.rand(len(samples),1) - 0.1))
         transy = np.round(110 * (np.random.rand(len(samples),1) - 0.5))
-        flip = np.tile([0,1], len(samples)/2)
+        flip = np.tile([0,1], len(samples)//2)
         self.samples = zip(samples, transx, transy, flip)
 
     def __len__(self):
@@ -59,8 +61,8 @@ class BinaryPressureDataset(Dataset):
             airfoil_file = 'a_{}.pt'.format(sample[0]) 
 
         pressure_file = 'p_{}.pt'.format(sample[0]) 
-        airfoil = torch.load(op.join(self.root_path, airfoil_file))
-        pressure = torch.load(op.join(self.root_path, pressure_file))
+        airfoil = torch.load(op.join(self.root_path, airfoil_file)).to(device)
+        pressure = torch.load(op.join(self.root_path, pressure_file)).to(device)
 
         centerx = int((airfoil.size()[1] // 2 + sample[1])[0])
         centery = int((airfoil.size()[0] // 2 + sample[2])[0])
@@ -129,20 +131,20 @@ class GuoCNN(torch.nn.Module):
         x = F.relu(self.deconv2(x))
         logger.debug("After deconv2")
         logger.debug(x.size())
-        if x.sum().item() < 0.00000001:
-            logger.warn("All zeros!")
+        #if x.sum().item() < 0.00000001:
+            #logger.warn("All zeros!")
 
         x = F.relu(self.deconv3(x))
         logger.debug("After deconv3")
         logger.debug(x.size())
-        if x.sum().item() < 0.00000001:
-            logger.warn("All zeros!")
+        #if x.sum().item() < 0.00000001:
+            #logger.warn("All zeros!")
 
         x = F.relu(self.deconv4(x))
         logger.debug("After deconv4")
         logger.debug(x.size())
-        if x.sum().item() < 0.00000001:
-            logger.warn("All zeros!")
+        #if x.sum().item() < 0.00000001:
+            #logger.warn("All zeros!")
 
         return x
 
@@ -155,8 +157,8 @@ def airfoilmseloss(pred, actual):
     diffsq = torch.pow(diff, 2)
     return torch.mean(diffsq)
 
-epochs = 1
-batch_size = 4
+epochs = 100
+batch_size = 64
 learning_rate = 0.0001
 
 train_dataset = BinaryPressureDataset(dirs.out_path('processed', 'train'))
@@ -169,7 +171,7 @@ test_loader = DataLoader(test_dataset, batch_size=1, sampler=test_sampler)
 
 logger.info("Training dataset size: {}".format(train_dataset.__len__()))
 
-net = GuoCNN()
+net = GuoCNN().to(device)
 # TODO: ignore airfoil mask bits
 loss = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)

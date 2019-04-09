@@ -1,1 +1,4 @@
 out/*
+*.pyc
+*.swp
+__pycache__/

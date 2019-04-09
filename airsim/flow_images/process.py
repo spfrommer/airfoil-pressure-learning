@@ -24,7 +24,7 @@ class AirfoilDataset(Dataset):
         self.root_path = root_path
         self.image_folders = os.listdir(root_path)
         if '.DS_Store' in self.image_folders:
-	    self.image_folders.remove('.DS_Store')
+            self.image_folders.remove('.DS_Store')
 
     def __len__(self):
         return len(self.image_folders)
