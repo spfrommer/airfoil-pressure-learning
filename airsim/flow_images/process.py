@@ -67,7 +67,7 @@ for i in range(len(airfoil_dataset)):
     range_diff = pressure_range[1] - pressure_range[0] 
     range_increment = range_diff / 256.0
     pressure_mask = (tensor[1, :, :] - 0.5) * range_diff + tensor[2, :, :] * range_increment
-
-    #pressure_mask = (pressure_mask / 200) + 0.5
-    #utils.save_image(pressure_mask, dirs.out_path('processed', 'p_{}.png'.format(i)))
     torch.save(pressure_mask, dirs.out_path('processed', 'p_{}.pt'.format(i)))
+
+    pressure_mask = (pressure_mask / 200) + 0.5
+    utils.save_image(pressure_mask, dirs.out_path('processed', 'p_{}.png'.format(i)))
