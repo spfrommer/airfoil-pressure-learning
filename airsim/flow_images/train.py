@@ -39,8 +39,8 @@ class BinaryPressureDataset(Dataset):
         #transy = np.round(0 * (np.random.rand(len(samples),1) - 0.5))
         #flip = np.tile([0], len(samples))
         samples = np.repeat(nums, 10)
-        transx = np.round(100 * (np.random.rand(len(samples),1) - 0.3))
-        transy = np.round(20 * (np.random.rand(len(samples),1) - 0.5))
+        transx = np.round(80 * (np.random.rand(len(samples),1) - 0.1))
+        transy = np.round(110 * (np.random.rand(len(samples),1) - 0.5))
         flip = np.tile([0,1], len(samples)/2)
         self.samples = zip(samples, transx, transy, flip)
 
@@ -139,9 +139,19 @@ class GuoCNN(torch.nn.Module):
 
         return x
 
-epochs = 200
-batch_size = 64
+def airfoilmseloss(pred, actual):
+    foilmask = torch.where(actual == -1000, 0, 1)
+    pred = foilmask * pred
+    actual = foilmask * actual
+    
+    diff = pred - actual
+    diffsq = torch.pow(diff, 2)
+    return torch.mean(diffsq)
+
+epochs = 0
+batch_size = 4
 learning_rate = 0.0001
+
 train_dataset = BinaryPressureDataset(dirs.out_path('processed', 'train'))
 train_sampler = RandomSampler(train_dataset)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
@@ -202,11 +212,10 @@ for epoch in range(epochs):
     
 logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
 
-airfoil, pressure = test_dataset[0]
+airfoil, pressure = test_dataset[11]
 airfoil, pressure = Variable(airfoil), Variable(pressure)
 airfoil = airfoil.view(1, 1, 256, 256)
 pressure = pressure.view(1, 1, 256, 256)
-pressure_pred = net(airfoil)
 
 logger.info(airfoil)
 utils.save_image(airfoil, 'airfoil.png')
@@ -215,6 +224,7 @@ logger.info(pressure)
 pressure = (pressure / 400) + 0.5
 utils.save_image(pressure, 'pressure.png')
 
-logger.info(pressure_pred)
+#pressure_pred = net(airfoil)
+#logger.info(pressure_pred)
 #pressure_pred = (pressure_pred / 200) + 0.5
-utils.save_image(pressure_pred, 'pressure_pred.png')
+#utils.save_image(pressure_pred, 'pressure_pred.png')

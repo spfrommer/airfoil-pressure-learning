@@ -31,15 +31,23 @@ class AirfoilDataset(Dataset):
 
     def __getitem__(self, index):
         image = Image.open(op.join(self.root_path, self.image_folders[i], 'p.png'))
-        return image
+        metadata = self.image_folders[i].split("_")
+        metadata = (metadata[0], float(metadata[1]), float(metadata[2]))
+        return metadata, image
 
+test_prefixes = ["s1223"]
 airfoil_dataset = AirfoilDataset(dirs.out_path('images_sample'))
 for i in range(len(airfoil_dataset)):
     print('Saving: {}'.format(i));
-    sample = airfoil_dataset[i]
+    metadata, sample = airfoil_dataset[i]
+
+    if metadata[0].startswith(tuple(test_prefixes)):
+        save_dir = 'test'
+    else:
+        save_dir = 'train'
     #sample = transforms.CenterCrop(4096)(sample)
 
-    size = (512,512)
+    size = (800,800)
     sample.thumbnail(size, Image.NEAREST)
 
     tensor = transforms.ToTensor()(sample)
@@ -47,27 +55,27 @@ for i in range(len(airfoil_dataset)):
     # Make airfoil tensor
     flattened = torch.sum(tensor, dim = 0) 
     airfoil_mask = torch.where(flattened == 0, flattened, torch.ones_like(flattened))
-    torch.save(airfoil_mask, dirs.out_path('processed', 'a_{}.pt'.format(i)))
+    torch.save(airfoil_mask, dirs.out_path('processed', save_dir, 'a_{}.pt'.format(i)))
 
     # Make sdf tensor
     binmask = airfoil_mask.numpy()
     binmask = binmask.astype(int)
-    negfoil = scipy.ndimage.morphology.distance_transform_edt(binmask)
-    binmaskcomp = np.invert(binmask)
-    posfoil = scipy.ndimage.morphology.distance_transform_edt(binmaskcomp)
+    posfoil = scipy.ndimage.morphology.distance_transform_edt(binmask)
+    binmaskcomp = 1 - binmask
+    negfoil = scipy.ndimage.morphology.distance_transform_edt(binmaskcomp)
     sdf = np.subtract(posfoil, negfoil)
     sdf_mask = torch.tensor(sdf) 
-    torch.save(sdf_mask, dirs.out_path('processed', 'sdf_{}.pt'.format(i)))
+    torch.save(sdf_mask, dirs.out_path('processed', save_dir, 'sdf_{}.pt'.format(i)))
 
     sdf_mask = (sdf_mask / 500) + 0.5
-    utils.save_image(sdf_mask, dirs.out_path('processed', 'sdf_{}.png'.format(i)))
+    utils.save_image(sdf_mask, dirs.out_path('processed', save_dir, 'sdf_{}.png'.format(i)))
     
     # Make pressure tensor
     pressure_range = (-1000, 1000)
     range_diff = pressure_range[1] - pressure_range[0] 
     range_increment = range_diff / 256.0
     pressure_mask = (tensor[1, :, :] - 0.5) * range_diff + tensor[2, :, :] * range_increment
-    torch.save(pressure_mask, dirs.out_path('processed', 'p_{}.pt'.format(i)))
+    torch.save(pressure_mask, dirs.out_path('processed', save_dir, 'p_{}.pt'.format(i)))
 
     pressure_mask = (pressure_mask / 200) + 0.5
-    utils.save_image(pressure_mask, dirs.out_path('processed', 'p_{}.png'.format(i)))
+    utils.save_image(pressure_mask, dirs.out_path('processed', save_dir, 'p_{}.png'.format(i)))
