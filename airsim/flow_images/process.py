@@ -35,6 +35,7 @@ class AirfoilDataset(Dataset):
         metadata = (metadata[0], float(metadata[1]), float(metadata[2]))
         return metadata, image
 
+output_images = False
 test_prefixes = ["goe5"]
 airfoil_dataset = AirfoilDataset(dirs.out_path('images_sample'))
 for i in range(len(airfoil_dataset)):
@@ -67,15 +68,19 @@ for i in range(len(airfoil_dataset)):
     sdf_mask = torch.tensor(sdf) 
     torch.save(sdf_mask, dirs.out_path('processed', save_dir, 'sdf_{}.pt'.format(i)))
 
-    sdf_mask = (sdf_mask / 500) + 0.5
-    utils.save_image(sdf_mask, dirs.out_path('processed', save_dir, 'sdf_{}.png'.format(i)))
+    if output_images:
+        sdf_mask = (sdf_mask / 500) + 0.5
+        utils.save_image(sdf_mask, dirs.out_path('processed', save_dir, 'sdf_{}.png'.format(i)))
     
     # Make pressure tensor
     pressure_range = (-1000, 1000)
     range_diff = pressure_range[1] - pressure_range[0] 
     range_increment = range_diff / 256.0
     pressure_mask = (tensor[1, :, :] - 0.5) * range_diff + tensor[2, :, :] * range_increment
+    # Zero out elements within airfoil
+    pressure_mask = pressure_mask * airfoil_mask
     torch.save(pressure_mask, dirs.out_path('processed', save_dir, 'p_{}.pt'.format(i)))
 
-    pressure_mask = (pressure_mask / 200) + 0.5
-    utils.save_image(pressure_mask, dirs.out_path('processed', save_dir, 'p_{}.png'.format(i)))
+    if output_images:
+        pressure_mask = (pressure_mask / 200) + 0.5
+        utils.save_image(pressure_mask, dirs.out_path('processed', save_dir, 'p_{}.png'.format(i)))
