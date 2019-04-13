@@ -35,8 +35,8 @@ class AirfoilDataset(Dataset):
         metadata = (metadata[0], float(metadata[1]), float(metadata[2]))
         return metadata, image
 
-output_images = False
-test_prefixes = ["goe5"]
+output_images = True
+test_prefixes = ["s1223"]
 airfoil_dataset = AirfoilDataset(dirs.out_path('images_sample'))
 for i in range(len(airfoil_dataset)):
     print('Saving: {}'.format(i));

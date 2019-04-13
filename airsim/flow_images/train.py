@@ -7,11 +7,6 @@ sys.path.append(path)
 
 import time
 import re
-import logging
-logging.basicConfig()
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 import torch
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, RandomSampler
@@ -26,6 +21,9 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import airsim.dirs as dirs
+import logs
+
+info_logger, data_logger = logs.create_training_loggers()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -109,44 +107,44 @@ class GuoCNN(torch.nn.Module):
     def forward(self, x):
         mask = x.clone()
 
-        logger.debug("Forwards pass")
-        logger.debug(x.size())
+        info_logger.debug("Forwards pass")
+        info_logger.debug(x.size())
 
         x = F.relu(self.conv1(x))
-        logger.debug("After conv1")
-        logger.debug(x.size())
+        info_logger.debug("After conv1")
+        info_logger.debug(x.size())
 
         x = F.relu(self.conv2(x))
-        logger.debug("After conv2")
-        logger.debug(x.size())
+        info_logger.debug("After conv2")
+        info_logger.debug(x.size())
 
         x = x.view(-1, 4 * 4 * 512)
         x = F.relu(self.fc1(x))
-        logger.debug("After fc1")
-        logger.debug(x.size())
+        info_logger.debug("After fc1")
+        info_logger.debug(x.size())
 
         x = x.view(-1, 1024, 1, 1)
         x = F.relu(self.deconv1(x))
-        logger.debug("After deconv1")
-        logger.debug(x.size())
+        info_logger.debug("After deconv1")
+        info_logger.debug(x.size())
 
         x = F.relu(self.deconv2(x))
-        logger.debug("After deconv2")
-        logger.debug(x.size())
+        info_logger.debug("After deconv2")
+        info_logger.debug(x.size())
         #if x.sum().item() < 0.00000001:
-            #logger.warn("All zeros!")
+            #info_logger.warn("All zeros!")
 
         x = F.relu(self.deconv3(x))
-        logger.debug("After deconv3")
-        logger.debug(x.size())
+        info_logger.debug("After deconv3")
+        info_logger.debug(x.size())
         #if x.sum().item() < 0.00000001:
-            #logger.warn("All zeros!")
+            #info_logger.warn("All zeros!")
 
         x = F.relu(self.deconv4(x))
-        logger.debug("After deconv4")
-        logger.debug(x.size())
+        info_logger.debug("After deconv4")
+        info_logger.debug(x.size())
         #if x.sum().item() < 0.00000001:
-            #logger.warn("All zeros!")
+            #info_logger.warn("All zeros!")
 
         x = x * mask
         return x
@@ -160,22 +158,20 @@ def airfoilmseloss(pred, actual):
     diffsq = torch.pow(diff, 2)
     return torch.mean(diffsq)
 
-epochs = 100
+epochs = 5
 batch_size = 64
 learning_rate = 0.0001
 
 train_dataset = BinaryPressureDataset(dirs.out_path('processed', 'train'))
-train_sampler = RandomSampler(train_dataset)
-train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
 
 test_dataset = BinaryPressureDataset(dirs.out_path('processed', 'test'))
-test_sampler = RandomSampler(test_dataset)
-test_loader = DataLoader(test_dataset, batch_size=1, sampler=test_sampler)
+test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=2)
 
-logger.info("Training dataset size: {}".format(train_dataset.__len__()))
+info_logger.info("Training dataset size: {}".format(len(train_dataset)))
+info_logger.info("Testing dataset size: {}".format(len(test_dataset)))
 
 net = GuoCNN().to(device)
-# TODO: ignore airfoil mask bits
 loss = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
@@ -206,7 +202,7 @@ for epoch in range(epochs):
 
         #Print every nth batch of an epoch
         if (i + 1) % (print_every + 1) == 0:
-            logger.info("Epoch {}, {:d}% \t train_loss: {:.2f} took: {:.2f}s".format(
+            info_logger.info("Epoch {}, {:d}% \t train_loss: {:.2f} took: {:.2f}s".format(
                     epoch+1, int(100 * (i+1) / batches), running_loss / print_every, time.time() - start_time))
             #Reset running loss and time
             running_loss = 0.0
@@ -216,28 +212,40 @@ for epoch in range(epochs):
     total_test_loss = 0
     for airfoils, pressures in test_loader:
         airfoils, pressures = Variable(airfoils), Variable(pressures)
-        test_pressures_pred = net(airfoils)
-        test_loss_size = loss(test_pressures_pred, pressures)
-        total_test_loss += test_loss_size.item()
-        
-    logger.info("Test loss = {:.2f}".format(total_test_loss / len(test_loader)))
+
+        pressures_pred = net(airfoils)
+        loss_size = loss(pressures_pred, pressures)
+        total_test_loss += loss_size.item()
+       
+    avg_train_loss = total_train_loss / len(train_dataset)
+    avg_test_loss = total_test_loss / len(test_dataset)
+    info_logger.info("Finished epoch {}".format(epoch+1))
+    info_logger.info("Train loss = {:.2f}".format(avg_train_loss))
+    info_logger.info("Test loss = {:.2f}".format(avg_test_loss))
+    data_logger.info("{}, {}, {}".format(epoch, avg_train_loss, avg_test_loss))
     
-logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
+info_logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
 
 if test_trained_net:
-    airfoil, pressure = test_dataset[11]
+    airfoil, pressure = test_dataset[0]
     airfoil, pressure = Variable(airfoil), Variable(pressure)
     airfoil = airfoil.view(1, 1, 256, 256)
     pressure = pressure.view(1, 1, 256, 256)
+    pressure_pred = net(airfoil)
+    pressure_error = pressure_pred - pressure
 
-    logger.info(airfoil)
+    info_logger.info(airfoil)
     utils.save_image(airfoil, 'airfoil.png')
 
-    logger.info(pressure)
+    info_logger.info(pressure)
     pressure = (pressure / 400) + 0.5
     utils.save_image(pressure, 'pressure.png')
 
-    pressure_pred = net(airfoil)
-    logger.info(pressure_pred)
+    info_logger.info(pressure_pred)
     pressure_pred = (pressure_pred / 200) + 0.5
     utils.save_image(pressure_pred, 'pressure_pred.png')
+
+    info_logger.info(pressure_error)
+    pressure_error = (pressure_error / 200) + 0.5
+    utils.save_image(pressure_error, 'pressure_error.png')
+
