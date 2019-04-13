@@ -36,9 +36,9 @@ class AirfoilDataset(Dataset):
         return metadata, image
 
 test_prefixes = ["goe5"]
-airfoil_dataset = AirfoilDataset(dirs.out_path('images_sample'))
+airfoil_dataset = AirfoilDataset(dirs.out_path('images'))
 for i in range(len(airfoil_dataset)):
-    print('Saving: {}'.format(i));
+    print('Processing: {}'.format(i));
     metadata, sample = airfoil_dataset[i]
 
     if metadata[0].startswith(tuple(test_prefixes)):
@@ -64,7 +64,7 @@ for i in range(len(airfoil_dataset)):
     binmaskcomp = 1 - binmask
     negfoil = scipy.ndimage.morphology.distance_transform_edt(binmaskcomp)
     sdf = np.subtract(posfoil, negfoil)
-    sdf_mask = torch.tensor(sdf) 
+    sdf_mask = torch.tensor(sdf).float()
     torch.save(sdf_mask, dirs.out_path('processed', save_dir, 'sdf_{}.pt'.format(i)))
 
     sdf_mask = (sdf_mask / 500) + 0.5

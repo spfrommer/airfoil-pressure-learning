@@ -29,7 +29,7 @@ import airsim.dirs as dirs
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-sdf_samples = False
+sdf_samples = True
 test_trained_net = True
 
 class BinaryPressureDataset(Dataset):
