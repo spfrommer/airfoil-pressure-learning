@@ -21,6 +21,6 @@ def create_training_loggers():
 
     # data logger
     data_formatter = logging.Formatter()
-    data_logger = create_logger('data_logger', 'training_errors.csv', data_formatter)
+    data_logger = create_logger('data_logger', 'training_errors.log', data_formatter)
     
     return info_logger, data_logger

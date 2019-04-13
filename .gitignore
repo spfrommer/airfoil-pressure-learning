@@ -3,3 +3,4 @@ out/*
 *.swp
 __pycache__/
 *.png
+*.log

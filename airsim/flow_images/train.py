@@ -29,6 +29,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 sdf_samples = False
 test_trained_net = True
+load_net = True
+net_path = dirs.out_path('trained', 'net.pth')
+epochs = 0
+batch_size = 64
+learning_rate = 0.0001
 
 class BinaryPressureDataset(Dataset):
     def __init__(self, root_path):
@@ -158,20 +163,19 @@ def airfoilmseloss(pred, actual):
     diffsq = torch.pow(diff, 2)
     return torch.mean(diffsq)
 
-epochs = 5
-batch_size = 64
-learning_rate = 0.0001
-
 train_dataset = BinaryPressureDataset(dirs.out_path('processed', 'train'))
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
 
 test_dataset = BinaryPressureDataset(dirs.out_path('processed', 'test'))
-test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=2)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
 
 info_logger.info("Training dataset size: {}".format(len(train_dataset)))
 info_logger.info("Testing dataset size: {}".format(len(test_dataset)))
 
 net = GuoCNN().to(device)
+if load_net:
+    net.load_state_dict(torch.load(net_path))
+
 loss = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
@@ -226,6 +230,8 @@ for epoch in range(epochs):
     
 info_logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
 
+torch.save(net.state_dict(), net_path)
+
 if test_trained_net:
     airfoil, pressure = test_dataset[0]
     airfoil, pressure = Variable(airfoil), Variable(pressure)
@@ -248,4 +254,5 @@ if test_trained_net:
     info_logger.info(pressure_error)
     pressure_error = (pressure_error / 200) + 0.5
     utils.save_image(pressure_error, 'pressure_error.png')
+
 
