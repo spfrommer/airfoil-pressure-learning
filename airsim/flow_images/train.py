@@ -107,6 +107,8 @@ class GuoCNN(torch.nn.Module):
         self.deconv4.bias.data = torch.tensor([0.1])
 
     def forward(self, x):
+        mask = x.clone()
+
         logger.debug("Forwards pass")
         logger.debug(x.size())
 
@@ -146,6 +148,7 @@ class GuoCNN(torch.nn.Module):
         #if x.sum().item() < 0.00000001:
             #logger.warn("All zeros!")
 
+        x = x * mask
         return x
 
 def airfoilmseloss(pred, actual):
