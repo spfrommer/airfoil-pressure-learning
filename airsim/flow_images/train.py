@@ -27,11 +27,11 @@ info_logger, data_logger = logs.create_training_loggers()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-sdf_samples = True
+sdf_samples = False
 test_trained_net = True
-load_net = True
+load_net = False
 net_path = dirs.out_path('trained', 'net.pth')
-epochs = 0
+epochs = 300
 batch_size = 64
 learning_rate = 0.0001
 
@@ -164,10 +164,10 @@ def airfoilmseloss(pred, actual):
     return torch.mean(diffsq)
 
 train_dataset = BinaryPressureDataset(dirs.out_path('processed', 'train'))
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
 test_dataset = BinaryPressureDataset(dirs.out_path('processed', 'test'))
-test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 info_logger.info("Training dataset size: {}".format(len(train_dataset)))
 info_logger.info("Testing dataset size: {}".format(len(test_dataset)))
@@ -181,10 +181,11 @@ optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 batches = len(train_loader)
 training_start_time = time.time()
+info_logger.info("Got {} batches".format(batches))
 
 for epoch in range(epochs):
     running_loss = 0.0
-    print_every = batches // 5
+    print_every = 5
     start_time = time.time()
     total_train_loss = 0
     
@@ -206,8 +207,9 @@ for epoch in range(epochs):
 
         #Print every nth batch of an epoch
         if (i + 1) % (print_every + 1) == 0:
-            info_logger.info("Epoch {}, {:d}% \t train_loss: {:.2f} took: {:.2f}s".format(
-                    epoch+1, int(100 * (i+1) / batches), running_loss / print_every, time.time() - start_time))
+            info_logger.info("Epoch {}, {:d}% \t train loss: {:.2f} took: {:.2f}s".format(
+                    epoch+1, int(100 * (i+1) / batches), running_loss / float(print_every * batch_size),
+                    time.time() - start_time))
             #Reset running loss and time
             running_loss = 0.0
             start_time = time.time()
@@ -227,10 +229,9 @@ for epoch in range(epochs):
     info_logger.info("Train loss = {:.2f}".format(avg_train_loss))
     info_logger.info("Test loss = {:.2f}".format(avg_test_loss))
     data_logger.info("{}, {}, {}".format(epoch, avg_train_loss, avg_test_loss))
+    torch.save(net.state_dict(), net_path)
     
 info_logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
-
-torch.save(net.state_dict(), net_path)
 
 if test_trained_net:
     airfoil, pressure = test_dataset[0]
