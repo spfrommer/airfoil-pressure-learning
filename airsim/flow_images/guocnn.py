@@ -64,7 +64,7 @@ class GuoCNN(torch.nn.Module):
         #if x.sum().item() < 0.00000001:
             #info_logger.warn("All zeros!")
 
-        x = F.relu(self.deconv4(x))
+        x = self.deconv4(x)
         info_logger.debug("After deconv4")
         info_logger.debug(x.size())
         #if x.sum().item() < 0.00000001:
