@@ -1,6 +1,6 @@
 import logging
 
-import dirs
+from airsim import dirs
 
 def create_logger(name, log_file, formatter, level=logging.INFO, print_console=False):
     handler = logging.FileHandler(log_file, mode='w')

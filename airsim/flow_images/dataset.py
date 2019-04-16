@@ -46,7 +46,7 @@ class ProcessedAirfoilDataset(Dataset):
                           centerx - half_size : centerx + half_size]
         pressure = pressure[centery - half_size : centery + half_size,
                             centerx - half_size : centerx + half_size]
-
+        pressure = pressure / 400
         if sample[3] == 1:
             airfoil = torch.flip(airfoil, [0])
             pressure = torch.flip(pressure, [0])

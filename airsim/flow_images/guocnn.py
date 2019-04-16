@@ -30,35 +30,36 @@ class GuoCNN(torch.nn.Module):
 
     def forward(self, x):
         mask = x
+        activation = F.tanh
 
         info_logger.debug("Forwards pass")
         info_logger.debug(x.size())
 
-        x = F.relu(self.conv1(x))
+        x = activation(self.conv1(x))
         info_logger.debug("After conv1")
         info_logger.debug(x.size())
 
-        x = F.relu(self.conv2(x))
+        x = activation(self.conv2(x))
         info_logger.debug("After conv2")
         info_logger.debug(x.size())
 
         x = x.view(-1, 4 * 4 * 512)
-        x = F.relu(self.fc1(x))
+        x = activation(self.fc1(x))
         info_logger.debug("After fc1")
         info_logger.debug(x.size())
 
         x = x.view(-1, 1024, 1, 1)
-        x = F.relu(self.deconv1(x))
+        x = activation(self.deconv1(x))
         info_logger.debug("After deconv1")
         info_logger.debug(x.size())
 
-        x = F.relu(self.deconv2(x))
+        x = activation(self.deconv2(x))
         info_logger.debug("After deconv2")
         info_logger.debug(x.size())
         #if x.sum().item() < 0.00000001:
             #info_logger.warn("All zeros!")
 
-        x = F.relu(self.deconv3(x))
+        x = activation(self.deconv3(x))
         info_logger.debug("After deconv3")
         info_logger.debug(x.size())
         #if x.sum().item() < 0.00000001:
