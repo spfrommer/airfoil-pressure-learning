@@ -24,11 +24,11 @@ import airsim.dirs as dirs
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-sdf_samples = False
+sdf_samples = True
 test_trained_net = True
-load_net = False
+load_net = True
 net_path = dirs.out_path('trained', 'net.pth')
-epochs = 2
+epochs = 0
 batch_size = 64
 learning_rate = 0.0001
 
@@ -132,18 +132,18 @@ def test_net(net, sample):
     pressure_error = pressure_pred - pressure
 
     info_logger.info(airfoil)
-    utils.save_image(airfoil, 'airfoil.png')
+    utils.save_image(airfoil, dirs.out_path('trained', 'airfoil.png'))
 
     info_logger.info(pressure)
     pressure = (pressure / 400) + 0.5
-    utils.save_image(pressure, 'pressure.png')
+    utils.save_image(pressure, dirs.out_path('trained', 'pressure.png'))
 
     info_logger.info(pressure_pred)
     pressure_pred = (pressure_pred / 200) + 0.5
-    utils.save_image(pressure_pred, 'pressure_pred.png')
+    utils.save_image(pressure_pred, dirs.out_path('trained', 'pressure_pred.png'))
 
     info_logger.info(pressure_error)
     pressure_error = (pressure_error / 200) + 0.5
-    utils.save_image(pressure_error, 'pressure_error.png')
+    utils.save_image(pressure_error, dirs.out_path('trained', 'pressure_error.png'))
 
 if __name__ == "__main__":main()
