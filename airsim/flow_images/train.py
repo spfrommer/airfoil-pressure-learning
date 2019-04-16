@@ -16,7 +16,6 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import logs
-info_logger, data_logger = logs.create_training_loggers()
 from guocnn import GuoCNN
 from dataset import ProcessedAirfoilDataset
 
@@ -28,12 +27,13 @@ sdf_samples = False
 test_trained_net = True
 load_net = False
 net_path = dirs.out_path('trained', 'net.pth')
-epochs = 2
-batch_size = 64
+epochs = 0
+batch_size = 128
 learning_rate = 0.0001
 
 def main():
-    #setup_multiprocessing()
+    setup_multiprocessing()
+    info_logger, data_logger = logs.create_training_loggers()
     train_dataset, train_loader, test_dataset, test_loader = init_data()
     net = GuoCNN().to(device)
     if load_net:
@@ -59,15 +59,17 @@ def setup_multiprocessing():
     #except RuntimeError:
         #pass
 
+info_logger, data_logger = logs.get_training_loggers()
+
 def init_data():
     train_dataset = ProcessedAirfoilDataset(
             dirs.out_path('processed', 'train'), sdf_samples, device)
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
-                              shuffle=True, num_workers=0)
+                              shuffle=True, num_workers=2)
     test_dataset = ProcessedAirfoilDataset(
             dirs.out_path('processed', 'test'), sdf_samples, device)
     test_loader = DataLoader(test_dataset, batch_size=batch_size,
-                              shuffle=False, num_workers=0)
+                              shuffle=False, num_workers=2)
     info_logger.info("Training dataset size: {}".format(len(train_dataset)))
     info_logger.info("Testing dataset size: {}".format(len(test_dataset)))
     return train_dataset, train_loader, test_dataset, test_loader
@@ -77,7 +79,7 @@ def train(net, optimizer, loss, train_loader, test_loader):
     info_logger.info("Got {} batches".format(batches))
     for epoch in range(epochs):
         running_loss = 0.0
-        print_every = 1
+        print_every = 5
         start_time = time.time()
         total_train_loss = 0
         
@@ -95,7 +97,7 @@ def train(net, optimizer, loss, train_loader, test_loader):
             
             running_loss += loss_size.item()
             total_train_loss += loss_size.item()
-
+            
             #Print every nth batch of an epoch
             if (i + 1) % (print_every + 1) == 0:
                 info_logger.info("Epoch {}, {:d}% \t train loss: {:.2f} took: {:.2f}s".format(
