@@ -1,5 +1,7 @@
 import logging
 
+import dirs
+
 def create_logger(name, log_file, formatter, level=logging.INFO, print_console=False):
     handler = logging.FileHandler(log_file, mode='w')
     handler.setFormatter(formatter)
@@ -15,11 +17,13 @@ def create_logger(name, log_file, formatter, level=logging.INFO, print_console=F
 def create_training_loggers():
     # info logger
     info_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    info_logger = create_logger('info_logger', 'training_info.log', info_formatter, print_console=True)
+    info_logger = create_logger('info_logger', dirs.out_path('trained', 'training_info.log'), 
+                                info_formatter, print_console=True)
 
     # data logger
     data_formatter = logging.Formatter()
-    data_logger = create_logger('data_logger', 'training_errors.log', data_formatter)
+    data_logger = create_logger('data_logger', dirs.out_path('trained', 'training_errors.log'),
+                                data_formatter)
     
     return info_logger, data_logger
 
