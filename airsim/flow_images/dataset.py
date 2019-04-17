@@ -9,7 +9,7 @@ import logs
 info_logger, data_logger = logs.get_training_loggers()
 
 class ProcessedAirfoilDataset(Dataset):
-    def __init__(self, root_path, sdf_samples, device):
+    def __init__(self, root_path, sdf_samples, device, augment=True):
         self.root_path = root_path
         self.sdf_samples = sdf_samples
         self.device = device
@@ -17,11 +17,18 @@ class ProcessedAirfoilDataset(Dataset):
         files = os.listdir(root_path)
         nums = list(dict.fromkeys([re.sub('\D','',f) for f in files]))
 
-        samples = np.repeat(nums, 10)
-        transx = np.round(80 * (np.random.rand(len(samples),1) - 0.1))
-        transy = np.round(110 * (np.random.rand(len(samples),1) - 0.5))
-        flip = np.tile([0,1], len(samples)//2)
-        self.samples = list(zip(samples, transx, transy, flip))
+        if augment:
+            samples = np.repeat(nums, 10)
+            transx = np.round(80 * (np.random.rand(len(samples),1) - 0.1))
+            transy = np.round(110 * (np.random.rand(len(samples),1) - 0.5))
+            flip = np.tile([0,1], len(samples)//2)
+            self.samples = list(zip(samples, transx, transy, flip))
+        else:
+            samples = nums
+            transx = np.zeros((len(samples),1))
+            transy = np.zeros((len(samples),1))
+            flip = np.zeros((len(samples),1))
+            self.samples = list(zip(samples, transx, transy, flip))
 
     def __len__(self):
         return len(self.samples)
@@ -56,4 +63,3 @@ class ProcessedAirfoilDataset(Dataset):
         pressure = pressure.expand(1,-1,-1)
 
         return (airfoil, pressure)
-

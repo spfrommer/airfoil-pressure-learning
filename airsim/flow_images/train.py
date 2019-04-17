@@ -28,11 +28,11 @@ test_trained_net = True
 load_net = False
 net_path = dirs.out_path('trained', 'net.pth')
 epochs = 200
-batch_size = 128
+batch_size = 1
 learning_rate = 0.0001
 
 def main():
-    setup_multiprocessing()
+    #setup_multiprocessing()
     info_logger, data_logger = logs.create_training_loggers()
     train_dataset, train_loader, test_dataset, test_loader = init_data()
     net = GuoCNN().to(device)
@@ -63,11 +63,11 @@ info_logger, data_logger = logs.get_training_loggers()
 
 def init_data():
     train_dataset = ProcessedAirfoilDataset(
-            dirs.out_path('processed', 'train'), sdf_samples, device)
+            dirs.out_path('processed', 'train'), sdf_samples, device, augment=False)
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
                               shuffle=True, num_workers=2)
     test_dataset = ProcessedAirfoilDataset(
-            dirs.out_path('processed', 'test'), sdf_samples, device)
+            dirs.out_path('processed', 'test'), sdf_samples, device, augment=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size,
                               shuffle=False, num_workers=2)
     info_logger.info("Training dataset size: {}".format(len(train_dataset)))
