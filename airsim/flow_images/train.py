@@ -124,7 +124,6 @@ def train(net, optimizer, loss, train_loader, test_loader):
         data_logger.info("{}, {}, {}".format(epoch, avg_train_loss, avg_test_loss))
         torch.save(net.state_dict(), net_path)
 
-
 def test_net(net, sample):
     airfoil, pressure = sample
     airfoil, pressure = Variable(airfoil), Variable(pressure)

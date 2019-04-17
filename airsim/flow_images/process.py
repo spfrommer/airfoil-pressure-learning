@@ -44,7 +44,7 @@ def empty_dir(path):
 empty_dir(dirs.out_path('processed', 'train'))
 empty_dir(dirs.out_path('processed', 'test'))
 
-output_images = False
+output_images = True
 test_prefixes = ["s1223"]
 airfoil_dataset = AirfoilDataset(dirs.out_path('single_image'))
 for i in range(len(airfoil_dataset)):

@@ -33,8 +33,7 @@ def main():
     train_dataset, train_loader, test_dataset, test_loader = init_data()
     net = GuoCNN().to(device)
     net.load_state_dict(torch.load(net_path, map_location=device))
-    print net
-    test_net(net, test_dataset[0]) 
+    test_net(net, train_dataset[0]) 
 
 def setup_multiprocessing():
     import torch.multiprocessing as mp
@@ -42,11 +41,11 @@ def setup_multiprocessing():
 
 def init_data():
     train_dataset = ProcessedAirfoilDataset(
-            dirs.out_path('processed', 'train'), sdf_samples, device)
+            dirs.out_path('processed', 'train'), sdf_samples, device, augment=False)
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
                               shuffle=True, num_workers=0)
     test_dataset = ProcessedAirfoilDataset(
-            dirs.out_path('processed', 'test'), sdf_samples, device)
+            dirs.out_path('processed', 'test'), sdf_samples, device, augment=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size,
                               shuffle=False, num_workers=0)
     info_logger.info("Training dataset size: {}".format(len(train_dataset)))

@@ -25,12 +25,10 @@ class GuoCNN(torch.nn.Module):
         xavier_uniform(self.deconv3.weight)
         self.deconv4 = torch.nn.ConvTranspose2d(32, 1, kernel_size=(2, 2), stride=(2, 2))
         xavier_uniform(self.deconv4.weight)
-        # Prevents zeros in last deconvolution output from bias being negative
-        self.deconv4.bias.data = torch.tensor([0.1])
 
     def forward(self, x):
         mask = x
-        activation = F.tanh
+        activation = F.relu
 
         info_logger.debug("Forwards pass")
         info_logger.debug(x.size())

@@ -2,9 +2,11 @@ import os
 import os.path as op
 import torch
 from torch.utils.data import Dataset
+from torchvision import utils
 import re
 import numpy as np
 
+from airsim import dirs
 import logs
 info_logger, data_logger = logs.get_training_loggers()
 
@@ -61,5 +63,7 @@ class ProcessedAirfoilDataset(Dataset):
         # Add dummy channel
         airfoil = airfoil.expand(1,-1,-1)
         pressure = pressure.expand(1,-1,-1)
+        #pressure = pressure + 0.5
+        #utils.save_image(pressure, dirs.out_path('trained', 'pressure.png'))
 
         return (airfoil, pressure)
