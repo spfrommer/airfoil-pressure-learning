@@ -100,7 +100,7 @@ def train(net, optimizer, loss, train_loader, test_loader):
             
             #Print every nth batch of an epoch
             if (i + 1) % (print_every + 1) == 0:
-                info_logger.info("Epoch {}, {:d}% \t train loss: {:.2f} took: {:.2f}s".format(
+                info_logger.info("Epoch {}, {:d}% \t train loss: {:.12f} took: {:.2f}s".format(
                         epoch+1, int(100 * (i+1) / batches), running_loss / (print_every * batch_size),
                         time.time() - start_time))
                 running_loss = 0.0
@@ -119,8 +119,8 @@ def train(net, optimizer, loss, train_loader, test_loader):
         avg_test_loss = total_test_loss / (len(test_loader) * batch_size)
  
         info_logger.info("Finished epoch {}".format(epoch+1))
-        info_logger.info("Train loss = {:.2f}".format(avg_train_loss))
-        info_logger.info("Test loss = {:.2f}".format(avg_test_loss))
+        info_logger.info("Train loss = {:.12f}".format(avg_train_loss))
+        info_logger.info("Test loss = {:.12f}".format(avg_test_loss))
         data_logger.info("{}, {}, {}".format(epoch, avg_train_loss, avg_test_loss))
         torch.save(net.state_dict(), net_path)
 
