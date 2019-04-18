@@ -33,7 +33,7 @@ def main():
     train_dataset, train_loader, test_dataset, test_loader = init_data()
     net = GuoCNN().to(device)
     net.load_state_dict(torch.load(net_path, map_location=device))
-    test_net(net, train_dataset[0]) 
+    test_net(net, test_dataset[0]) 
 
 def setup_multiprocessing():
     import torch.multiprocessing as mp

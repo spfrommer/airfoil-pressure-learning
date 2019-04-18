@@ -115,8 +115,8 @@ def train(net, optimizer, loss, train_loader, test_loader):
             loss_size = loss(pressures_pred, pressures)
             total_test_loss += loss_size.item()
            
-        avg_train_loss = total_train_loss / (len(train_loader) * batch_size)
-        avg_test_loss = total_test_loss / (len(test_loader) * batch_size)
+        avg_train_loss = total_train_loss / len(train_loader.dataset)
+        avg_test_loss = total_test_loss / len(test_loader.dataset)
  
         info_logger.info("Finished epoch {}".format(epoch+1))
         info_logger.info("Train loss = {:.12f}".format(avg_train_loss))
