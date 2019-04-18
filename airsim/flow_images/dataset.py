@@ -63,7 +63,5 @@ class ProcessedAirfoilDataset(Dataset):
         # Add dummy channel
         airfoil = airfoil.expand(1,-1,-1)
         pressure = pressure.expand(1,-1,-1)
-        #pressure = pressure + 0.5
-        #utils.save_image(pressure, dirs.out_path('trained', 'pressure.png'))
 
         return (airfoil, pressure)

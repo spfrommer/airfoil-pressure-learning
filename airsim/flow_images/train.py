@@ -24,16 +24,17 @@ import airsim.dirs as dirs
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 sdf_samples = False
-test_trained_net = True
-load_net = False
+load_net = True
+append = True
 net_path = dirs.out_path('trained', 'net.pth')
-epochs = 200
-batch_size = 1
+start_epoch = 83
+epochs = 300
+batch_size = 64
 learning_rate = 0.0001
 
 def main():
-    #setup_multiprocessing()
-    info_logger, data_logger = logs.create_training_loggers()
+    setup_multiprocessing()
+    info_logger, data_logger = logs.create_training_loggers(append=append)
     train_dataset, train_loader, test_dataset, test_loader = init_data()
     net = GuoCNN().to(device)
     if load_net:
@@ -47,9 +48,6 @@ def main():
     except Exception:
         info_logger.exception("Error in training")
     info_logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
-
-    if test_trained_net:
-        test_net(net, test_dataset[0])
 
 def setup_multiprocessing():
     import torch.multiprocessing as mp
@@ -77,7 +75,7 @@ def init_data():
 def train(net, optimizer, loss, train_loader, test_loader):
     batches = len(train_loader)
     info_logger.info("Got {} batches".format(batches))
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         running_loss = 0.0
         print_every = 5
         start_time = time.time()
@@ -123,28 +121,5 @@ def train(net, optimizer, loss, train_loader, test_loader):
         info_logger.info("Test loss = {:.12f}".format(avg_test_loss))
         data_logger.info("{}, {}, {}".format(epoch, avg_train_loss, avg_test_loss))
         torch.save(net.state_dict(), net_path)
-
-def test_net(net, sample):
-    airfoil, pressure = sample
-    airfoil, pressure = Variable(airfoil), Variable(pressure)
-    airfoil = airfoil.view(1, 1, 256, 256)
-    pressure = pressure.view(1, 1, 256, 256)
-    pressure_pred = net(airfoil)
-    pressure_error = pressure_pred - pressure
-
-    info_logger.info(airfoil)
-    utils.save_image(airfoil, dirs.out_path('trained', 'airfoil.png'))
-
-    info_logger.info(pressure)
-    pressure = pressure + 0.5
-    utils.save_image(pressure, dirs.out_path('trained', 'pressure.png'))
-
-    info_logger.info(pressure_pred)
-    pressure_pred = pressure_pred + 0.5
-    utils.save_image(pressure_pred, dirs.out_path('trained', 'pressure_pred.png'))
-
-    info_logger.info(pressure_error)
-    pressure_error = pressure_error + 0.5
-    utils.save_image(pressure_error, dirs.out_path('trained', 'pressure_error.png'))
 
 if __name__ == "__main__":main()
