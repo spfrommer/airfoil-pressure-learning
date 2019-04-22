@@ -7,7 +7,6 @@ sys.path.append(path)
 
 import time
 import torch
-from torch.utils.data import DataLoader, RandomSampler
 from torch.autograd.variable import Variable
 from torchvision import transforms, utils
 
@@ -16,41 +15,35 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import logs
-info_logger, data_logger = logs.create_training_loggers()
+info_logger, data_logger = logs.create_loggers(training=False)
 from guocnn import GuoCNN
-from dataset import ProcessedAirfoilDataset
+import dataset
 
 import airsim.dirs as dirs
+from airsim.io_utils import empty_dir
 
+empty_dir(dirs.out_path('testing'))
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-sdf_samples = False
-net_path = dirs.out_path('trained', 'net.pth')
+sdf_samples = True
+net_path = dirs.out_path('training', 'final_net.pth')
 batch_size = 64
 
 def main():
     #setup_multiprocessing()
-    train_dataset, train_loader, test_dataset, test_loader = init_data()
-    net = GuoCNN().to(device)
+    (train_dataset, train_loader, validation_dataset, validation_loader,
+            test_dataset, test_loader) = dataset.load_data(sdf_samples, device, batch_size, 0)
+    net = GuoCNN(sdf_samples).to(device)
     net.load_state_dict(torch.load(net_path, map_location=device))
-    test_net(net, test_dataset[0]) 
+    sample = train_dataset[0]
+    info_logger.info("Input largest element: {}".format(torch.max(sample[0])))
+    info_logger.info("Input smallest element: {}".format(torch.min(sample[0])))
+    info_logger.info("Pressure largest element: {}".format(torch.max(sample[1])))
+    info_logger.info("Pressure smallest element: {}".format(torch.min(sample[1])))
+    test_net(net, sample) 
 
 def setup_multiprocessing():
     import torch.multiprocessing as mp
     mp.set_start_method('spawn')
-
-def init_data():
-    train_dataset = ProcessedAirfoilDataset(
-            dirs.out_path('processed', 'train'), sdf_samples, device, augment=False)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size,
-                              shuffle=True, num_workers=0)
-    test_dataset = ProcessedAirfoilDataset(
-            dirs.out_path('processed', 'test'), sdf_samples, device, augment=False)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size,
-                              shuffle=False, num_workers=0)
-    info_logger.info("Training dataset size: {}".format(len(train_dataset)))
-    info_logger.info("Testing dataset size: {}".format(len(test_dataset)))
-    return train_dataset, train_loader, test_dataset, test_loader
 
 def test_net(net, sample):
     airfoil, pressure = sample
@@ -60,18 +53,14 @@ def test_net(net, sample):
     pressure_pred = net(airfoil)
     pressure_error = pressure_pred - pressure
 
-    info_logger.info(airfoil)
     utils.save_image(airfoil, dirs.out_path('testing', 'airfoil.png'))
 
-    info_logger.info(pressure)
     pressure = pressure + 0.5
     utils.save_image(pressure, dirs.out_path('testing', 'pressure.png'))
 
-    info_logger.info(pressure_pred)
     pressure_pred = pressure_pred + 0.5
     utils.save_image(pressure_pred, dirs.out_path('testing', 'pressure_pred.png'))
 
-    info_logger.info(pressure_error)
     pressure_error = pressure_error + 0.5
     utils.save_image(pressure_error, dirs.out_path('testing', 'pressure_error.png'))
 

@@ -1,6 +1,7 @@
 import os
 import sys
 import math
+import glob
 import numpy
 import json
 from lxml import etree
@@ -105,3 +106,8 @@ def run_command(argv):
     return { "fatalError": fatalError,
              "keyboardInterrupt": keyboardInterrupt,
              "commandLine": " ".join(argv) }
+
+def empty_dir(path):
+    files = glob.glob(path + '/*')
+    for f in files:
+        os.remove(f)
