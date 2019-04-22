@@ -24,9 +24,9 @@ from airsim.io_utils import empty_dir
 
 empty_dir(dirs.out_path('testing'))
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-sdf_samples = True
+sdf_samples = False
 net_path = dirs.out_path('training', 'final_net.pth')
-batch_size = 64
+batch_size = 1
 
 def main():
     #setup_multiprocessing()

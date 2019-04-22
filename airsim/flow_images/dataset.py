@@ -57,7 +57,7 @@ class ProcessedAirfoilDataset(Dataset):
 
         # Empirical tuning
         if self.sdf_samples: airfoil = (airfoil / 400.0)
-        pressure = (pressure / 400.0) + 0.3
+        pressure = (pressure / 400.0)
 
         if sample[3] == 1:
             airfoil = torch.flip(airfoil, [0])
