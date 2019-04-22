@@ -5,7 +5,7 @@ path = op.dirname(op.dirname(op.dirname(op.abspath(__file__))))
 print('Setting project root path: ' + path)
 sys.path.append(path)
 
-import numpy as np
+import numpy as npcd 
 import time
 import torch
 from torch.utils.data import DataLoader, RandomSampler
