@@ -35,7 +35,7 @@ final_net_path = dirs.out_path('training', 'final_net.pth')
 epochs = 250
 num_workers = 0
 batch_size = 1
-learning_rate = 0.01 * (batch_size / 64.0)
+learning_rate = 0.001 * (batch_size / 64.0)
 #learning_rate_mul = 0.8
 #learning_rate_mul_interval = 2000 # Number of descents per lr rescale
 
