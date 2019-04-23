@@ -32,10 +32,10 @@ sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
-epochs = 150
-num_workers = 0
-batch_size = 5
-learning_rate = 0.01 * (batch_size / 64.0)
+epochs = 250
+num_workers = 1
+batch_size = 64
+learning_rate = 0.001 * (batch_size / 64.0)
 #learning_rate_mul = 0.8
 #learning_rate_mul_interval = 2000 # Number of descents per lr rescale
 
@@ -96,7 +96,7 @@ def train(net, optimizer, loss, train_loader, validation_loader):
     for epoch in range(start_epoch, epochs):
         info_logger.info("Starting epoch: {}".format(epoch+1))
 
-        train_loss = loss_pass(net, loss, train_loader, optimizer=optimizer, prints=True)
+        train_loss = loss_pass(net, loss, train_loader, optimizer=optimizer, log=True)
 
         #train_loss = loss_pass(net, loss, train_loader)
         validation_loss = loss_pass(net, loss, validation_loader)
@@ -113,12 +113,12 @@ def train(net, optimizer, loss, train_loader, validation_loader):
 
         torch.save(net.state_dict(), final_net_path)
 
-def loss_pass(net, loss, data_loader, optimizer=None, prints=False):
+def loss_pass(net, loss, data_loader, optimizer=None, log=False):
     batches = len(data_loader)
     if batches == 0:
         return 0
 
-    if prints:
+    if log:
         print_every = 5
         start_time = time.time()
     
@@ -140,7 +140,7 @@ def loss_pass(net, loss, data_loader, optimizer=None, prints=False):
 
         total_loss += loss_size.item()
 
-        if prints:
+        if log:
             running_loss += loss_size.item()
 
             #Print every nth batch of an epoch
