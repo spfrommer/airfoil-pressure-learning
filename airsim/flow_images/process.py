@@ -13,6 +13,9 @@ import scipy.ndimage
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
+from matplotlib import pyplot
+import pdb
+
 from PIL import Image
 
 # Ignore warnings
@@ -96,7 +99,7 @@ for j, i in enumerate(data_indices):
     # Zero out elements within airfoil
     pressure_mask = pressure_mask * airfoil_mask
     torch.save(pressure_mask, dirs.out_path('processed', save_dir, 'p_{}.pt'.format(i)))
-
+    pdb.set_trace()
     if output_images:
         sdf_mask = (sdf_mask / 500) + 0.5
         utils.save_image(sdf_mask, dirs.out_path('processed', save_dir, 'sdf_{}.png'.format(i)))

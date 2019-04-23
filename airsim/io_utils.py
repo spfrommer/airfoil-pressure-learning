@@ -5,10 +5,10 @@ import glob
 import numpy
 import json
 from lxml import etree
-import cPickle as pickle
+import pickle
 from subprocess import call
 
-import dirs
+from airsim import dirs
 
 # Adapted from Robert Lee's OpenFOAM tutorials
 # https://github.com/openfoamtutorials/OpenFOAM_Tutorials_/blob/master/HowToPlotForces/plot_forces.py 
