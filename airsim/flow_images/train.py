@@ -5,7 +5,7 @@ path = op.dirname(op.dirname(op.dirname(op.abspath(__file__))))
 print('Setting project root path: ' + path)
 sys.path.append(path)
 
-import numpy as npcd 
+import numpy as np
 import time
 import torch
 from torch.utils.data import DataLoader, RandomSampler
@@ -21,6 +21,7 @@ import losses
 from guocnn import GuoCNN
 from airflow_unet import Airflow_Unet256
 import dataset
+import pdb
 
 from tensorboardX import SummaryWriter
 import matplotlib.pyplot as plt
@@ -31,11 +32,12 @@ from airsim.io_utils import empty_dir
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 writer = SummaryWriter()
 
-training_plots_i = [41, 50, 69, 72, 73]
-valid_plots_i = [80, 84, 77, 96, 35]
+training_plots_i = np.array([1, 2, 3, 4, 5])
+valid_plots_i = np.array([1, 2, 3, 4, 5])
+
 resume = False
 
-sdf_samples = True
+sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
@@ -51,13 +53,19 @@ validation_min = float('inf')
 append = False
 load_net_path = None
 
+
+#global arrays for plotting
+epoch_idx = []
+train_loss_idx = []
+valid_loss_idx = []
+
 if resume:
     append = True
     load_net_path = final_net_path
     log_path = dirs.out_path('training', 'data.log') 
-    array = npcd.loadtxt(open(log_path, "rb"), delimiter=",", skiprows=0)
-    start_epoch = npcd.size(array, 0)
-    validation_min = npcd.min(array[:,2])
+    array = np.loadtxt(open(log_path, "rb"), delimiter=",", skiprows=0)
+    start_epoch = np.size(array, 0)
+    validation_min = np.min(array[:,2])
 else:
     empty_dir(dirs.out_path('training'))
 
@@ -83,7 +91,7 @@ def main():
     loss = losses.foil_mse_loss
     optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
     #optimizer = torch.optim.RMSprop(net.parameters(), lr=learning_rate,
-    #        eps=1e-4, weight_decay=0.05, momentum=0.9)
+    #        eps=1e-4, weight_decay=0, momentum=0.9)
 
     training_start_time = time.time()
     try:
@@ -92,8 +100,9 @@ def main():
         info_logger.exception("Error in training")
 
     info_logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
-    test_loss = loss_pass(net, loss, test_loader)
+    test_loss = loss_pass(net, loss, test_loader, -1)
     info_logger.info("Test loss = {:.12f}".format(test_loss))
+    writer.add_scalar('Test Loss', test_loss)
 
 def setup_multiprocessing():
     import torch.multiprocessing as mp
@@ -105,11 +114,12 @@ def train(net, optimizer, loss, train_loader, validation_loader):
     best_validation = validation_min
     for epoch in range(start_epoch, epochs):
         info_logger.info("Starting epoch: {}".format(epoch+1))
-        train_loss = loss_pass(net, loss, train_loader, optimizer=optimizer, prints=True)
+        train_loss = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, prints=True)
 
         #train_loss = loss_pass(net, loss, train_loader)
-        validation_loss = loss_pass(net, loss, validation_loader)
-        
+        validation_loss = loss_pass(net, loss, validation_loader, epoch+1)
+        log_epoch_loss(epoch + 1, train_loss, validation_loss)
+
         info_logger.info("Finished epoch {}".format(epoch+1))
         info_logger.info("Train loss = {:.12f}".format(train_loss))
         info_logger.info("Validation loss = {:.12f}".format(validation_loss))
@@ -119,18 +129,33 @@ def train(net, optimizer, loss, train_loader, validation_loader):
             info_logger.info("New best validation! Saving")
             torch.save(net.state_dict(), validation_net_path)
             best_validation = validation_loss
-
+            writer.add_scalar('Best Validation Loss', best_validation)
         torch.save(net.state_dict(), final_net_path)
 
+
+def log_epoch_loss(epoch_num, train_loss, validation_loss):
+    fig = plt.figure(figsize=(8, 8))
+    epoch_idx.append(epoch_num)
+    train_loss_idx.append(train_loss)
+    valid_loss_idx.append(validation_loss)
+    ax = []
+    ax.append(fig.add_subplot(1, 1, 1))
+    plt.title("AirfoilMSE Test/Validation Loss across each Epoch")
+    plt.xlabel("Epoch")
+    plt.ylabel("AirfoilMSE ")
+    plt.plot(epoch_idx, train_loss_idx, color='#85144b', label='train_loss', lw=3)
+    plt.plot(epoch_idx, valid_loss_idx, color='#FF851B', label='valid_loss', lw=3)
+    plt.grid(True)
+    plt.legend()
+    label = 'Loss Graph'
+    writer.add_figure(label, fig)
+
 #Change this method to show the same plot
-def log_batch_output(x, y, y_hat, sample_id, epoch, cmap='plasma'):
+def log_batch_output(x, y, y_hat, sample_id, epoch, train = False, cmap='coolwarm'):
     if(len(sample_id > 0)):
-        x = torch.squeeze(x, dim = 1)
-        y = torch.squeeze(y, dim = 1)
-        y_hat = y_hat.detach()
-        for i in range(x.size()[0]):
-            fig = plt.figure(figsize=(20, 20))
-            title()
+        for i in range(x.shape[0]):
+            fig = plt.figure(figsize=(10, 10))
+            fig.suptitle('Input Image, Ground_Truth, Prediction - Epoch {}'.format(epoch))
             ax = []
             ax.append(fig.add_subplot(1, 3, 1))
             plt.imshow(x[i, :, :], cmap=cmap)
@@ -141,22 +166,30 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, cmap='plasma'):
             ax.append(fig.add_subplot(1, 3, 3))
             plt.imshow(y_hat[i, :, :], cmap=cmap)
             plt.colorbar()
-            label = 'x, y, yhat, {}'.format(sample_id[i])
+            if(train):
+                label = 'TRAIN:Plots Id : {}'.format(training_plots_i[sample_id[i]])
+            else:
+                label = 'VALID:Plots Id : {}'.format(valid_plots_i[sample_id[i]])
             writer.add_figure(label, fig)
 
 
 def find_matching_ids(batch_sample_ids, target_sample_ids):
-    return npcd.intersect1d(batch_sample_ids, target_sample_ids)
+    return np.in1d(batch_sample_ids, target_sample_ids)
 
-def loss_pass(net, loss, data_loader, optimizer=None, prints=False):
+def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, prints=False):
     batches = len(data_loader)
     if batches == 0:
         return 0
 
     if prints:
-        print_every = 5
+        print_every = len(data_loader) - 1
         start_time = time.time()
     
+    if (optimizer == None):
+        torch.autograd.set_grad_enabled(False)
+    else:
+        torch.autograd.set_grad_enabled(True)
+
     running_loss = 0.0
     total_loss = 0
     for i, data in enumerate(data_loader, 0):
@@ -172,12 +205,19 @@ def loss_pass(net, loss, data_loader, optimizer=None, prints=False):
         if optimizer:
             loss_size.backward()
             optimizer.step()
-            matching_ids = find_matching_ids(sample_ids, training_plots_i)
-            log_batch_output(airfoils.cpu(), pressures.cpu(), pressures_pred.cpu(), matching_ids)
+            matching_ids = find_matching_ids(sample_ids.cpu(), training_plots_i)
+            matching_ids = np.where(matching_ids)[0]
+            airfoils = ((torch.squeeze(airfoils.cpu(), dim = 1)).numpy())[matching_ids, :, :]
+            pressures = ((torch.squeeze(pressures.cpu(), dim=1)).numpy())[matching_ids,:,:]
+            pressures_pred  = (pressures_pred.detach().cpu().numpy())[matching_ids, :, :]
+            log_batch_output(airfoils, pressures, pressures_pred, matching_ids, epoch_num, train=True)
 
         else:
             matching_ids = find_matching_ids(sample_ids, valid_plots_i)
-            log_batch_output(airfoils.cpu(), pressures.cpu(), pressures_pred.cpu(), matching_ids)
+            airfoils = ((torch.squeeze(airfoils.cpu(), dim = 1)).numpy())[matching_ids, :, :]
+            pressures = ((torch.squeeze(pressures.cpu(), dim=1)).numpy())[matching_ids,:,:]
+            pressures_pred  = (pressures_pred.detach().cpu().numpy())[matching_ids, :, :]
+            log_batch_output(airfoils, pressures, pressures_pred, matching_ids, epoch_num, train=False)
             
 
         total_loss += loss_size.item()
@@ -187,12 +227,14 @@ def loss_pass(net, loss, data_loader, optimizer=None, prints=False):
 
             #Print every nth batch of an epoch
             if (i + 1) % (print_every + 1) == 0:
+                timetaken = time.time() - start_time
                 info_logger.info("Loss: {:.12f} took: {:.2f}s".format(
                         running_loss / (print_every * data_loader.batch_size),
-                        time.time() - start_time))
+                        timetaken))
+                writer.add_scalar('Time Taken', timetaken)
                 running_loss = 0.0
                 start_time = time.time()
-
+    torch.autograd.set_grad_enabled(True)
     return total_loss / len(data_loader.dataset)
 
 if __name__ == "__main__":main()
