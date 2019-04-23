@@ -43,14 +43,14 @@ empty_dir(dirs.out_path('processed', 'train'))
 empty_dir(dirs.out_path('processed', 'validation'))
 empty_dir(dirs.out_path('processed', 'test'))
 
-output_images = True
-airfoil_dataset = AirfoilDataset(dirs.out_path('images_double'))
+output_images = False
+airfoil_dataset = AirfoilDataset(dirs.out_path('images'))
 
 #test_prefixes = ["s1223"]
 #data_splits = np.array([0.60, 0.75, 1]) * len(airfoil_dataset)
-data_splits = np.array([0.5, 0.7, 1]) * len(airfoil_dataset)
+data_splits = np.array([0.6, 0.8, 1]) * len(airfoil_dataset)
 
-data_indices = range(len(airfoil_dataset))
+data_indices = list(range(len(airfoil_dataset)))
 random.shuffle(data_indices)
 
 for j, i in enumerate(data_indices):
