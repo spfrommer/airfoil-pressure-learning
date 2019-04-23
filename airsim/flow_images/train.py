@@ -1,5 +1,4 @@
-import sys
-import os
+import sys import os
 import os.path as op
 path = op.dirname(op.dirname(op.dirname(op.abspath(__file__))))
 print('Setting project root path: ' + path)
@@ -41,17 +40,17 @@ sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
-epochs = 20
-num_workers = 0
-batch_size = 3
-learning_rate = 0.01 * (batch_size / 64.0)
+epochs = 250
+num_workers = 1
+batch_size = 64
+learning_rate = 0.001 * (batch_size / 64.0)
 #learning_rate_mul = 0.8
 #learning_rate_mul_interval = 2000 # Number of descents per lr rescale
 
-start_epoch = 0
-validation_min = float('inf')
 append = False
 load_net_path = None
+start_epoch = 0
+validation_min = float('inf')
 
 
 #global arrays for plotting
@@ -114,7 +113,7 @@ def train(net, optimizer, loss, train_loader, validation_loader):
     best_validation = validation_min
     for epoch in range(start_epoch, epochs):
         info_logger.info("Starting epoch: {}".format(epoch+1))
-        train_loss = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, prints=True)
+        train_loss = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, log=True)
 
         #train_loss = loss_pass(net, loss, train_loader)
         validation_loss = loss_pass(net, loss, validation_loader, epoch+1)
@@ -131,7 +130,6 @@ def train(net, optimizer, loss, train_loader, validation_loader):
             best_validation = validation_loss
             writer.add_scalar('Best Validation Loss', best_validation)
         torch.save(net.state_dict(), final_net_path)
-
 
 def log_epoch_loss(epoch_num, train_loss, validation_loss):
     fig = plt.figure(figsize=(8, 8))
@@ -176,12 +174,12 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, train = False, cmap='coolwar
 def find_matching_ids(batch_sample_ids, target_sample_ids):
     return np.in1d(batch_sample_ids, target_sample_ids)
 
-def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, prints=False):
+def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
     batches = len(data_loader)
     if batches == 0:
         return 0
 
-    if prints:
+    if log:
         print_every = len(data_loader) - 1
         start_time = time.time()
     
@@ -221,8 +219,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, prints=False):
             
 
         total_loss += loss_size.item()
-        
-        if prints:
+        if log:
             running_loss += loss_size.item()
 
             #Print every nth batch of an epoch

@@ -14,7 +14,6 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 from matplotlib import pyplot
-import pdb
 
 from PIL import Image
 
@@ -46,12 +45,12 @@ empty_dir(dirs.out_path('processed', 'train'))
 empty_dir(dirs.out_path('processed', 'validation'))
 empty_dir(dirs.out_path('processed', 'test'))
 
-output_images = False
-airfoil_dataset = AirfoilDataset(dirs.out_path('images'))
+output_images = True
+airfoil_dataset = AirfoilDataset(dirs.out_path('images_sample'))
 
 #test_prefixes = ["s1223"]
 #data_splits = np.array([0.60, 0.75, 1]) * len(airfoil_dataset)
-data_splits = np.array([0.5, 0.7, 1]) * len(airfoil_dataset)
+data_splits = np.array([0.6, 0.8, 1]) * len(airfoil_dataset)
 
 data_indices = list(range(len(airfoil_dataset)))
 random.shuffle(data_indices)
@@ -75,6 +74,14 @@ for j, i in enumerate(data_indices):
     sample.thumbnail(size, Image.NEAREST)
 
     tensor = transforms.ToTensor()(sample)
+    
+    transx = 40
+    transy = 0
+    centerx = int(tensor.size()[2] // 2 + transx)
+    centery = int(tensor.size()[1] // 2 + transy)
+    half_size = 128
+    tensor = tensor[:, centery - half_size : centery + half_size,
+                       centerx - half_size : centerx + half_size]
 
     # Make airfoil tensor
     flattened = torch.sum(tensor, dim = 0) 
@@ -99,6 +106,7 @@ for j, i in enumerate(data_indices):
     # Zero out elements within airfoil
     pressure_mask = pressure_mask * airfoil_mask
     torch.save(pressure_mask, dirs.out_path('processed', save_dir, 'p_{}.pt'.format(i)))
+
     if output_images:
         sdf_mask = (sdf_mask / 500) + 0.5
         utils.save_image(sdf_mask, dirs.out_path('processed', save_dir, 'sdf_{}.png'.format(i)))

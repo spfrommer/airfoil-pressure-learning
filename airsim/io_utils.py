@@ -5,7 +5,7 @@ import glob
 import numpy
 import json
 from lxml import etree
-import _pickle as pickle
+import pickle
 from subprocess import call
 
 from airsim import dirs
