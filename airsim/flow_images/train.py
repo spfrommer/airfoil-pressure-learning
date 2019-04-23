@@ -39,10 +39,10 @@ learning_rate = 0.001 * (batch_size / 64.0)
 #learning_rate_mul = 0.8
 #learning_rate_mul_interval = 2000 # Number of descents per lr rescale
 
-start_epoch = 0
-validation_min = float('inf')
 append = False
 load_net_path = None
+start_epoch = 0
+validation_min = float('inf')
 
 if resume:
     append = True
@@ -71,9 +71,9 @@ def main():
     if load_net_path:
         net.load_state_dict(torch.load(load_net_path))
     loss = losses.foil_mse_loss
-    optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
-    #optimizer = torch.optim.RMSprop(net.parameters(), lr=learning_rate,
-    #        eps=1e-4, weight_decay=0.05, momentum=0.9)
+    #optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+    optimizer = torch.optim.RMSprop(net.parameters(), lr=learning_rate,
+            eps=1e-4, weight_decay=0.05, momentum=0.9)
 
     training_start_time = time.time()
     try:
