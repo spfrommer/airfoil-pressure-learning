@@ -41,8 +41,8 @@ class ProcessedAirfoilDataset(Dataset):
             '{}_{}.pt'.format(filename_root, sample[0]))).to(self.device)
         return tensor
 
-    def __getitem__(self, i):
-        sample = self.samples[i]
+    def __getitem__(self, sample_id):
+        sample = self.samples[sample_id]
         
         airfoil = self.load_tensor('sdf' if self.sdf_samples else 'a', sample)
         pressure = self.load_tensor('p', sample)
@@ -67,7 +67,7 @@ class ProcessedAirfoilDataset(Dataset):
         airfoil = airfoil.expand(1,-1,-1)
         pressure = pressure.expand(1,-1,-1)
 
-        return airfoil, pressure
+        return airfoil, pressure, sample_id
 
 def load_data(sdf_samples, device, batch_size, num_workers):
     train_dataset = ProcessedAirfoilDataset(

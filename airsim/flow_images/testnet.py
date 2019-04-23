@@ -32,8 +32,8 @@ def main():
     #setup_multiprocessing()
     (train_dataset, train_loader, validation_dataset, validation_loader,
             test_dataset, test_loader) = dataset.load_data(sdf_samples, device, batch_size, 0)
-    net = GuoCNN(sdf_samples).to(device)
-    net.load_state_dict(torch.load(net_path, map_location=device))
+    #net = GuoCNN(sdf_samples).to(device)
+    net.load_state_dict(torch.load(net_path, sdf_samples, map_location=device))
     sample = train_dataset[0]
     info_logger.info("Input largest element: {}".format(torch.max(sample[0])))
     info_logger.info("Input smallest element: {}".format(torch.min(sample[0])))
@@ -65,4 +65,3 @@ def test_net(net, sample):
     utils.save_image(pressure_error, dirs.out_path('testing', 'pressure_error.png'))
 
 if __name__ == "__main__":main()
-

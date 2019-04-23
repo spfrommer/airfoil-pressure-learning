@@ -7,8 +7,9 @@ import torch.nn.functional as F
 
 #256 x 256 Airflow Images
 class Airflow_Unet256(nn.Module):
-    def __init__(self, in_shape):
+    def __init__(self, in_shape, sdf):
         super(Airflow_Unet256, self).__init__()
+        self.sdf = sdf
         C, H, W = in_shape
         #256
         self.down1 = StackEncoder(C, 64, kernel_size=3) #128
@@ -29,6 +30,10 @@ class Airflow_Unet256(nn.Module):
         self.classify = nn.Conv2d(24, 1, kernel_size=1, padding=0, stride=1, bias=True)
 
     def forward(self, x):
+        if self.sdf:
+            mask = torch.where(x <= 0, torch.zeros_like(x), torch.ones_like(x))
+        else:
+            mask = x
         out = x
 
         down1, out = self.down1(out)
@@ -54,7 +59,7 @@ class Airflow_Unet256(nn.Module):
         out = self.up1(down1, out)
 
         out = self.classify(out)
-        
+        out = out * mask
         out = torch.squeeze(out, dim=1)
         return out
 
