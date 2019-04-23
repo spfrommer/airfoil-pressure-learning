@@ -20,18 +20,13 @@ class ProcessedAirfoilDataset(Dataset):
         nums = list(dict.fromkeys([re.sub('\D','',f) for f in files]))
 
         if augment:
-            samples = np.repeat(nums, 10)
-            transx = np.round(80 * (np.random.rand(len(samples),1) - 0.1))
-            transy = np.round(110 * (np.random.rand(len(samples),1) - 0.5))
+            samples = np.repeat(nums, 2)
             flip = np.tile([0,1], len(samples)//2)
-            self.samples = list(zip(samples, transx, transy, flip))
+            self.samples = list(zip(samples, flip))
         else:
             samples = nums
-            #transx = np.zeros((len(samples),1))
-            transx = np.ones((len(samples),1)) * 40
-            transy = np.zeros((len(samples),1))
             flip = np.zeros((len(samples),1))
-            self.samples = list(zip(samples, transx, transy, flip))
+            self.samples = list(zip(samples, flip))
 
     def __len__(self):
         return len(self.samples)
@@ -46,20 +41,12 @@ class ProcessedAirfoilDataset(Dataset):
         
         airfoil = self.load_tensor('sdf' if self.sdf_samples else 'a', sample)
         pressure = self.load_tensor('p', sample)
-        centerx = int((airfoil.size()[1] // 2 + sample[1])[0])
-        centery = int((airfoil.size()[0] // 2 + sample[2])[0])
-        half_size = 128
-       
-        airfoil = airfoil[centery - half_size : centery + half_size,
-                          centerx - half_size : centerx + half_size]
-        pressure = pressure[centery - half_size : centery + half_size,
-                            centerx - half_size : centerx + half_size]
 
         # Empirical tuning
         if self.sdf_samples: airfoil = (airfoil / 400.0)
         pressure = (pressure / 400.0)
 
-        if sample[3] == 1:
+        if sample[1] == 1:
             airfoil = torch.flip(airfoil, [0])
             pressure = torch.flip(pressure, [0])
 

@@ -34,7 +34,7 @@ def main():
             test_dataset, test_loader) = dataset.load_data(sdf_samples, device, batch_size, 0)
     net = GuoCNN(sdf_samples).to(device)
     net.load_state_dict(torch.load(net_path, map_location=device))
-    sample = test_dataset[0]
+    sample = train_dataset[0]
     info_logger.info("Input largest element: {}".format(torch.max(sample[0])))
     info_logger.info("Input smallest element: {}".format(torch.min(sample[0])))
     info_logger.info("Pressure largest element: {}".format(torch.max(sample[1])))
