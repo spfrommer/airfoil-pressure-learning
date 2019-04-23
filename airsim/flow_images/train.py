@@ -1,4 +1,5 @@
-import sys import os
+import sys
+import os
 import os.path as op
 path = op.dirname(op.dirname(op.dirname(op.abspath(__file__))))
 print('Setting project root path: ' + path)
@@ -41,8 +42,8 @@ validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
 epochs = 250
-num_workers = 1
-batch_size = 64
+num_workers = 0
+batch_size = 3
 learning_rate = 0.001 * (batch_size / 64.0)
 #learning_rate_mul = 0.8
 #learning_rate_mul_interval = 2000 # Number of descents per lr rescale
@@ -82,8 +83,7 @@ def main():
     (train_dataset, train_loader, validation_dataset, validation_loader,
             test_dataset, test_loader) = dataset.load_data(sdf_samples, device, batch_size, num_workers)
     #net = GuoCNN(sdf=sdf_samples).to(device)
-    net = Airflow_Unet256((1, 256, 256), sdf_samples)
-    net = net.cuda()
+    net = Airflow_Unet256((1, 256, 256), sdf_samples).to(device)
     
     if load_net_path:
         net.load_state_dict(torch.load(load_net_path))
