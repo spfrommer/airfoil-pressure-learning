@@ -30,7 +30,6 @@ import airsim.dirs as dirs
 from airsim.io_utils import empty_dir
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-writer = SummaryWriter()
 
 training_plots_i = np.array([1, 2, 3, 4, 5])
 valid_plots_i = np.array([1, 2, 3, 4, 5])
@@ -66,6 +65,8 @@ if resume:
     validation_min = np.min(array[:,2])
 else:
     empty_dir(dirs.out_path('training'))
+
+writer = SummaryWriter(dirs.out_path('training', 'runs'))
 
 def main():
     if num_workers > 0:
@@ -142,9 +143,9 @@ def log_epoch_loss(epoch_num, train_loss, validation_loss, label):
     valid_loss_idx.append(validation_loss)
     ax = []
     ax.append(fig.add_subplot(1, 1, 1))
-    plt.title("AirfoilMSE Test/Validation Loss across each Epoch")
+    plt.title("MSE Train / Validation Loss across each Epoch")
     plt.xlabel("Epoch")
-    plt.ylabel("AirfoilMSE ")
+    plt.ylabel("MSE")
     plt.plot(epoch_idx, train_loss_idx, color='#85144b', label='train_loss', lw=3)
     plt.plot(epoch_idx, valid_loss_idx, color='#FF851B', label='valid_loss', lw=3)
     plt.grid(True)
@@ -156,18 +157,21 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'
     if(len(sample_id > 0)):
         for i in range(x.shape[0]):
             if ((train and np.isin(sample_id[i], training_plots_i)) or (not train and np.isin(sample_id[i], valid_plots_i))):
-                fig = plt.figure(figsize=(10, 10))
-                fig.suptitle('Input Image, Ground_Truth, Prediction - Epoch {}'.format(epoch))
+                fig = plt.figure(figsize=(12, 12))
+                fig.suptitle('Input Image, Ground_Truth, Prediction, Absolute Difference- Epoch {}'.format(epoch))
                 ax = []
-                ax.append(fig.add_subplot(1, 3, 1))
+                ax.append(fig.add_subplot(2, 2, 1))
                 plt.imshow(x[i, :, :], cmap=cmap)
-                plt.colorbar()
-                ax.append(fig.add_subplot(1, 3, 2))
+                plt.colorbar(fraction=0.046, pad=0.04)
+                ax.append(fig.add_subplot(2, 2, 2))
                 plt.imshow(y[i, :, :], cmap=cmap)
-                plt.colorbar()
-                ax.append(fig.add_subplot(1, 3, 3))
+                plt.colorbar(fraction=0.046, pad=0.04)
+                ax.append(fig.add_subplot(2, 2, 3))
                 plt.imshow(y_hat[i, :, :], cmap=cmap)
-                plt.colorbar()
+                plt.colorbar(fraction=0.046, pad=0.04)
+                ax.append(fig.add_subplot(2, 2, 4))
+                plt.imshow(y_hat[i, :, :] - y[i, :, :], cmap=cmap)
+                plt.colorbar(fraction=0.046, pad=0.04)
                 if(train):
                     label = 'TRAIN:Plots Id : {}'.format(sample_id[i])
                 else:
