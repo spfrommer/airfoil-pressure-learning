@@ -71,8 +71,10 @@ def foil_mse_loss(pred, actual):
 
     sum_squared_errors = squared_errors.view(size[0], size[1], -1).sum(2)
     denominators_per_sum = mask.view(size[0], size[1], -1).sum(2)
+    denominators_per_sum = torch.where(denominators_per_sum == 0,
+            torch.ones_like(denominators_per_sum) * (256**2), denominators_per_sum)
 
     mse_per_image = torch.div(sum_squared_errors, denominators_per_sum)
-    
+
     mse = torch.sum(mse_per_image)
     return mse

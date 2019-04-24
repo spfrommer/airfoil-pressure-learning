@@ -29,20 +29,20 @@ import matplotlib.pyplot as plt
 import airsim.dirs as dirs
 from airsim.io_utils import empty_dir
 
+resume = False
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 training_plots_i = np.array([1, 2, 3, 4, 5])
 valid_plots_i = np.array([1, 2, 3, 4, 5])
 
-resume = False
-
 sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
-epochs = 2
-num_workers = 0
-batch_size = 3
+epochs = 500
+num_workers = 1
+batch_size = 64
 learning_rate = 0.001 * (batch_size / 64.0)
 
 append = False
@@ -57,15 +57,16 @@ if resume:
     array = np.loadtxt(open(log_path, "rb"), delimiter=",", skiprows=0)
     start_epoch = np.size(array, 0)
     validation_min = np.min(array[:,2])
-else:
-    empty_dir(dirs.out_path('training'))
-    empty_dir(dirs.out_path('training', 'runs'))
 
 writer = SummaryWriter(dirs.out_path('training', 'runs'))
 
 def main():
     if num_workers > 0:
         setup_multiprocessing()
+        
+    if not resume:
+        empty_dir(dirs.out_path('training'))
+        empty_dir(dirs.out_path('training', 'runs'))
 
     info_logger, data_logger = logs.create_loggers(training=True, append=append)
 
@@ -76,12 +77,13 @@ def main():
 
     (train_dataset, train_loader, validation_dataset, validation_loader,
             test_dataset, test_loader) = dataset.load_data(sdf_samples, device, batch_size, num_workers)
-    #net = GuoCNN(sdf=sdf_samples).to(device)
-    net = Airflow_Unet256((1, 256, 256), sdf_samples).to(device)
+    net = GuoCNN(sdf=sdf_samples).to(device)
+    #net = Airflow_Unet256((1, 256, 256), sdf_samples).to(device)
     
     if load_net_path:
         net.load_state_dict(torch.load(load_net_path))
-    loss = losses.foil_mse_loss
+    #loss = losses.foil_mse_loss
+    loss = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
     #optimizer = torch.optim.RMSprop(net.parameters(), lr=learning_rate,
     #        eps=1e-4, weight_decay=0, momentum=0.9)
@@ -116,7 +118,7 @@ def train(net, optimizer, loss, train_loader, validation_loader):
         info_logger.info("Starting epoch: {}".format(epoch+1))
         train_loss, train_loss_percent = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, log=True)
         validation_loss, validation_loss_percent = loss_pass(net, loss, validation_loader, epoch+1)
-        
+
         elapsed_epochs.append(epoch+1)
         train_losses.append(train_loss)
         validation_losses.append(validation_loss)
@@ -166,7 +168,7 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'
         for i in range(x.shape[0]):
             if ((train and np.isin(sample_id[i], training_plots_i)) or (not train and np.isin(sample_id[i], valid_plots_i))):
                 fig = plt.figure(figsize=(12, 12))
-                fig.suptitle('Input Image, Ground_Truth, Prediction, Absolute Difference- Epoch {}'.format(epoch))
+                fig.suptitle('Input Image, Ground_Truth, Prediction, Absolute Difference | Epoch {}'.format(epoch))
                 ax = []
                 ax.append(fig.add_subplot(2, 2, 1))
                 plt.imshow(x[i, :, :], cmap=cmap)
@@ -196,10 +198,10 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
         return 0
 
     if log:
-        print_every = len(data_loader) - 1
+        print_every = 5
         start_time = time.time()
     
-    render_every = 2
+    render_every = 10
 
     running_loss = 0.0
     total_loss = 0
@@ -220,7 +222,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
             loss_size.backward()
             optimizer.step()
         
-        if i % render_every == 0:
+        if epoch_num % render_every == 0:
             log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=(optimizer is not None))
             
         total_loss += loss_size.item()
