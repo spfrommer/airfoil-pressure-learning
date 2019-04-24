@@ -45,8 +45,6 @@ epochs = 3
 num_workers = 0
 batch_size = 3
 learning_rate = 0.001 * (batch_size / 64.0)
-#learning_rate_mul = 0.8
-#learning_rate_mul_interval = 2000 # Number of descents per lr rescale
 
 append = False
 load_net_path = None
@@ -99,8 +97,9 @@ def main():
         info_logger.exception("Error in training")
 
     info_logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
-    test_loss = loss_pass(net, loss, test_loader, -1)
+    test_loss, test_loss_percent = loss_pass(net, loss, test_loader, -1)
     info_logger.info("Test loss = {:.12f}".format(test_loss))
+    info_logger.info("Test loss percent = {:.12f}".format(test_loss_percent))
     writer.add_scalar('Test Loss', test_loss)
 
 def setup_multiprocessing():
@@ -113,16 +112,21 @@ def train(net, optimizer, loss, train_loader, validation_loader):
     best_validation = validation_min
     for epoch in range(start_epoch, epochs):
         info_logger.info("Starting epoch: {}".format(epoch+1))
-        train_loss = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, log=True)
+        train_loss, train_loss_percent = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, log=True)
 
         #train_loss = loss_pass(net, loss, train_loader)
-        validation_loss = loss_pass(net, loss, validation_loader, epoch+1)
-        log_epoch_loss(epoch + 1, train_loss, validation_loss)
+        validation_loss, validation_loss_percent = loss_pass(net, loss, validation_loader, epoch+1)
+        log_epoch_loss(epoch + 1, train_loss, validation_loss, 'MSE Loss')
+        log_epoch_loss(epoch + 1, train_loss_percent,
+                       validation_loss_percent, 'Median Percent Error')
 
         info_logger.info("Finished epoch {}".format(epoch+1))
         info_logger.info("Train loss = {:.12f}".format(train_loss))
+        info_logger.info("Train loss percent = {:.12f}".format(train_loss_percent))
         info_logger.info("Validation loss = {:.12f}".format(validation_loss))
-        data_logger.info("{}, {:12f}, {:12f}".format(epoch, train_loss, validation_loss))
+        info_logger.info("Validation loss percent = {:.12f}".format(validation_loss_percent))
+        data_logger.info("{}, {:12f}, {:12f}, {:12f}, {:12f}".format(epoch,
+            train_loss, validation_loss, train_loss_percent, validation_loss_percent))
 
         if validation_loss < best_validation:
             info_logger.info("New best validation! Saving")
@@ -131,7 +135,7 @@ def train(net, optimizer, loss, train_loader, validation_loader):
             writer.add_scalar('Best Validation Loss', best_validation)
         torch.save(net.state_dict(), final_net_path)
 
-def log_epoch_loss(epoch_num, train_loss, validation_loss):
+def log_epoch_loss(epoch_num, train_loss, validation_loss, label):
     fig = plt.figure(figsize=(8, 8))
     epoch_idx.append(epoch_num)
     train_loss_idx.append(train_loss)
@@ -145,7 +149,6 @@ def log_epoch_loss(epoch_num, train_loss, validation_loss):
     plt.plot(epoch_idx, valid_loss_idx, color='#FF851B', label='valid_loss', lw=3)
     plt.grid(True)
     plt.legend()
-    label = 'Loss Graph'
     writer.add_figure(label, fig)
 
 #Change this method to show the same plot
@@ -191,6 +194,8 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
 
     running_loss = 0.0
     total_loss = 0
+    total_percentage_loss = 0
+
     for i, data in enumerate(data_loader, 0):
         airfoils, pressures, sample_ids = data
         airfoils, pressures = Variable(airfoils), Variable(pressures)
@@ -220,6 +225,8 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
             
 
         total_loss += loss_size.item()
+        total_percentage_loss = losses.median_percentage_loss(pressures_pred, pressures).item()
+
         if log:
             running_loss += loss_size.item()
 
@@ -233,6 +240,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
                 running_loss = 0.0
                 start_time = time.time()
     torch.autograd.set_grad_enabled(True)
-    return total_loss / len(data_loader.dataset)
+
+    return total_loss / len(data_loader.dataset), total_percentage_loss / len(data_loader.dataset)
 
 if __name__ == "__main__":main()
