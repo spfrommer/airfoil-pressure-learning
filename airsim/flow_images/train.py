@@ -43,7 +43,7 @@ final_net_path = dirs.out_path('training', 'final_net.pth')
 
 epochs = 500
 num_workers = 0
-batch_size = 4
+batch_size = 64
 learning_rate_base = 0.0004 * (batch_size / 64.0)
 
 append = False
@@ -156,7 +156,6 @@ def train(net, optimizer, loss, train_loader, validation_loader):
         torch.save(net.state_dict(), final_net_path)
 
 def log_epoch_loss(epochs, train_losses, valid_losses, label):
-    info_logger.info('Logging epoch loss image')
     fig = plt.figure(figsize=(8, 8))
     ax = []
     ax.append(fig.add_subplot(1, 1, 1))
@@ -171,10 +170,9 @@ def log_epoch_loss(epochs, train_losses, valid_losses, label):
 
 #Change this method to show the same plot
 def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'):        
-    info_logger.info('Logging batch image')
     x = torch.squeeze(x.cpu(), dim=1).numpy()
     y = torch.squeeze(y.cpu(), dim=1).numpy()
-    y_hat  = torch.squeeze(y_hat.detach().cpu(), dim=1).numpy()
+    y_hat = torch.squeeze(y_hat.detach().cpu(), dim=1).numpy()
 
     if (len(sample_id) > 0):
         for i in range(x.shape[0]):
@@ -213,7 +211,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
         print_every = 5
         start_time = time.time()
     
-    render_every = 10
+    render_every = 1
 
     running_loss = 0.0
     total_loss = 0
