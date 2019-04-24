@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
 from torch.nn.init import xavier_uniform
-
 import logs
 info_logger, data_logger = logs.get_loggers()
 

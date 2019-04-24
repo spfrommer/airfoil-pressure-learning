@@ -60,7 +60,6 @@ class Airflow_Unet256(nn.Module):
 
         out = self.classify(out)
         out = out * mask
-        out = torch.squeeze(out, dim=1)
         return out
 
 class StackDecoder(nn.Module):

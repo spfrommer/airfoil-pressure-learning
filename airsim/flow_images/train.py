@@ -40,7 +40,7 @@ sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
-epochs = 3
+epochs = 2
 num_workers = 0
 batch_size = 3
 learning_rate = 0.001 * (batch_size / 64.0)
@@ -49,12 +49,6 @@ append = False
 load_net_path = None
 start_epoch = 0
 validation_min = float('inf')
-
-
-#global arrays for plotting
-epoch_idx = []
-train_loss_idx = []
-valid_loss_idx = []
 
 if resume:
     append = True
@@ -65,6 +59,7 @@ if resume:
     validation_min = np.min(array[:,2])
 else:
     empty_dir(dirs.out_path('training'))
+    empty_dir(dirs.out_path('training', 'runs'))
 
 writer = SummaryWriter(dirs.out_path('training', 'runs'))
 
@@ -110,16 +105,28 @@ def setup_multiprocessing():
 info_logger, data_logger = logs.get_loggers()
 
 def train(net, optimizer, loss, train_loader, validation_loader):
+    elapsed_epochs = []
+    train_losses = []
+    validation_losses = []
+    train_losses_percent = []
+    validation_losses_percent = []
+
     best_validation = validation_min
     for epoch in range(start_epoch, epochs):
         info_logger.info("Starting epoch: {}".format(epoch+1))
         train_loss, train_loss_percent = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, log=True)
-
-        #train_loss = loss_pass(net, loss, train_loader)
         validation_loss, validation_loss_percent = loss_pass(net, loss, validation_loader, epoch+1)
-        log_epoch_loss(epoch + 1, train_loss, validation_loss, 'MSE Loss')
-        log_epoch_loss(epoch + 1, train_loss_percent,
-                       validation_loss_percent, 'Median Percent Error')
+        
+        elapsed_epochs.append(epoch+1)
+        train_losses.append(train_loss)
+        validation_losses.append(validation_loss)
+        train_losses_percent.append(train_loss_percent * 100)
+        validation_losses_percent.append(validation_loss_percent * 100)
+
+        log_epoch_loss(elapsed_epochs, train_losses,
+                       validation_losses, 'MSE Loss')
+        log_epoch_loss(elapsed_epochs, train_losses_percent,
+                       validation_losses_percent, 'Median Percent Error')
 
         info_logger.info("Finished epoch {}".format(epoch+1))
         info_logger.info("Train loss = {:.12f}".format(train_loss))
@@ -136,25 +143,26 @@ def train(net, optimizer, loss, train_loader, validation_loader):
             writer.add_scalar('Best Validation Loss', best_validation)
         torch.save(net.state_dict(), final_net_path)
 
-def log_epoch_loss(epoch_num, train_loss, validation_loss, label):
+def log_epoch_loss(epochs, train_losses, valid_losses, label):
     fig = plt.figure(figsize=(8, 8))
-    epoch_idx.append(epoch_num)
-    train_loss_idx.append(train_loss)
-    valid_loss_idx.append(validation_loss)
     ax = []
     ax.append(fig.add_subplot(1, 1, 1))
-    plt.title("MSE Train / Validation Loss across each Epoch")
+    plt.title("Train & Validation Losses")
     plt.xlabel("Epoch")
-    plt.ylabel("MSE")
-    plt.plot(epoch_idx, train_loss_idx, color='#85144b', label='train_loss', lw=3)
-    plt.plot(epoch_idx, valid_loss_idx, color='#FF851B', label='valid_loss', lw=3)
+    plt.ylabel(label)
+    plt.plot(epochs, train_losses, color='#85144b', label='train_loss', lw=3)
+    plt.plot(epochs, valid_losses, color='#FF851B', label='valid_loss', lw=3)
     plt.grid(True)
     plt.legend()
     writer.add_figure(label, fig)
 
 #Change this method to show the same plot
 def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'):        
-    if(len(sample_id > 0)):
+    x = torch.squeeze(x.cpu(), dim=1).numpy()
+    y = torch.squeeze(y.cpu(), dim=1).numpy()
+    y_hat  = torch.squeeze(y_hat.detach().cpu(), dim=1).numpy()
+
+    if (len(sample_id) > 0):
         for i in range(x.shape[0]):
             if ((train and np.isin(sample_id[i], training_plots_i)) or (not train and np.isin(sample_id[i], valid_plots_i))):
                 fig = plt.figure(figsize=(12, 12))
@@ -191,10 +199,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
         print_every = len(data_loader) - 1
         start_time = time.time()
     
-    if (optimizer == None):
-        torch.autograd.set_grad_enabled(False)
-    else:
-        torch.autograd.set_grad_enabled(True)
+    render_every = 2
 
     running_loss = 0.0
     total_loss = 0
@@ -209,28 +214,17 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
 
         pressures_pred = net(airfoils)
         loss_size = loss(pressures_pred, pressures)
+        percentage_loss_size = losses.median_percentage_loss(pressures_pred, pressures)
         
         if optimizer:
             loss_size.backward()
             optimizer.step()
-            #matching_ids = find_matching_ids(sample_ids.cpu(), training_plots_i)
-            #matching_ids = np.where(matching_ids)[0]
-            airfoils = ((torch.squeeze(airfoils.cpu(), dim = 1)).numpy())
-            pressures = ((torch.squeeze(pressures.cpu(), dim=1)).numpy())
-            pressures_pred  = (pressures_pred.detach().cpu().numpy())
-            log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=True)
-
-        else:
-            #matching_ids = find_matching_ids(sample_ids, valid_plots_i)
-            airfoils = ((torch.squeeze(airfoils.cpu(), dim = 1)).numpy())
-            pressures = ((torch.squeeze(pressures.cpu(), dim=1)).numpy())
-            pressures_pred  = (pressures_pred.detach().cpu().numpy())
-            log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=False)
+        
+        if i % render_every == 0:
+            log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=(optimizer is not None))
             
-
         total_loss += loss_size.item()
-        total_percentage_loss = losses.median_percentage_loss(pressures_pred, pressures).item()
-
+        total_percentage_loss = percentage_loss_size.item()
         if log:
             running_loss += loss_size.item()
 
@@ -243,7 +237,6 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
                 writer.add_scalar('Time Taken', timetaken)
                 running_loss = 0.0
                 start_time = time.time()
-    torch.autograd.set_grad_enabled(True)
 
     return total_loss / len(data_loader.dataset), total_percentage_loss / len(data_loader.dataset)
 

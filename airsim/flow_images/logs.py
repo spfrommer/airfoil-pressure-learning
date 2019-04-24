@@ -21,7 +21,7 @@ def create_loggers(training=True, append=False):
     # info logger
     info_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     info_logger = create_logger('info_logger', dirs.out_path(write_dir, 'info.log'), 
-                                info_formatter, mode, print_console=True)
+                                info_formatter, mode, print_console=False)
 
     # data logger
     data_formatter = logging.Formatter()
