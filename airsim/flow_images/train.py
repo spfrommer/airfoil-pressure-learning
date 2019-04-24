@@ -150,26 +150,27 @@ def log_epoch_loss(epoch_num, train_loss, validation_loss):
     writer.add_figure(label, fig)
 
 #Change this method to show the same plot
-def log_batch_output(x, y, y_hat, sample_id, epoch, train = False, cmap='coolwarm'):
+def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'):        
     if(len(sample_id > 0)):
         for i in range(x.shape[0]):
-            fig = plt.figure(figsize=(10, 10))
-            fig.suptitle('Input Image, Ground_Truth, Prediction - Epoch {}'.format(epoch))
-            ax = []
-            ax.append(fig.add_subplot(1, 3, 1))
-            plt.imshow(x[i, :, :], cmap=cmap)
-            plt.colorbar()
-            ax.append(fig.add_subplot(1, 3, 2))
-            plt.imshow(y[i, :, :], cmap=cmap)
-            plt.colorbar()
-            ax.append(fig.add_subplot(1, 3, 3))
-            plt.imshow(y_hat[i, :, :], cmap=cmap)
-            plt.colorbar()
-            if(train):
-                label = 'TRAIN:Plots Id : {}'.format(training_plots_i[sample_id[i]])
-            else:
-                label = 'VALID:Plots Id : {}'.format(valid_plots_i[sample_id[i]])
-            writer.add_figure(label, fig)
+            if ((train and np.isin(sample_id[i], training_plots_i)) or (not train and np.isin(sample_id[i], valid_plots_i))):
+                fig = plt.figure(figsize=(10, 10))
+                fig.suptitle('Input Image, Ground_Truth, Prediction - Epoch {}'.format(epoch))
+                ax = []
+                ax.append(fig.add_subplot(1, 3, 1))
+                plt.imshow(x[i, :, :], cmap=cmap)
+                plt.colorbar()
+                ax.append(fig.add_subplot(1, 3, 2))
+                plt.imshow(y[i, :, :], cmap=cmap)
+                plt.colorbar()
+                ax.append(fig.add_subplot(1, 3, 3))
+                plt.imshow(y_hat[i, :, :], cmap=cmap)
+                plt.colorbar()
+                if(train):
+                    label = 'TRAIN:Plots Id : {}'.format(sample_id[i])
+                else:
+                    label = 'VALID:Plots Id : {}'.format(sample_id[i])
+                writer.add_figure(label, fig)
 
 
 def find_matching_ids(batch_sample_ids, target_sample_ids):
@@ -204,19 +205,19 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
         if optimizer:
             loss_size.backward()
             optimizer.step()
-            matching_ids = find_matching_ids(sample_ids.cpu(), training_plots_i)
-            matching_ids = np.where(matching_ids)[0]
-            airfoils = ((torch.squeeze(airfoils.cpu(), dim = 1)).numpy())[matching_ids, :, :]
-            pressures = ((torch.squeeze(pressures.cpu(), dim=1)).numpy())[matching_ids,:,:]
-            pressures_pred  = (pressures_pred.detach().cpu().numpy())[matching_ids, :, :]
-            log_batch_output(airfoils, pressures, pressures_pred, matching_ids, epoch_num, train=True)
+            #matching_ids = find_matching_ids(sample_ids.cpu(), training_plots_i)
+            #matching_ids = np.where(matching_ids)[0]
+            airfoils = ((torch.squeeze(airfoils.cpu(), dim = 1)).numpy())
+            pressures = ((torch.squeeze(pressures.cpu(), dim=1)).numpy())
+            pressures_pred  = (pressures_pred.detach().cpu().numpy())
+            log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=True)
 
         else:
-            matching_ids = find_matching_ids(sample_ids, valid_plots_i)
-            airfoils = ((torch.squeeze(airfoils.cpu(), dim = 1)).numpy())[matching_ids, :, :]
-            pressures = ((torch.squeeze(pressures.cpu(), dim=1)).numpy())[matching_ids,:,:]
-            pressures_pred  = (pressures_pred.detach().cpu().numpy())[matching_ids, :, :]
-            log_batch_output(airfoils, pressures, pressures_pred, matching_ids, epoch_num, train=False)
+            #matching_ids = find_matching_ids(sample_ids, valid_plots_i)
+            airfoils = ((torch.squeeze(airfoils.cpu(), dim = 1)).numpy())
+            pressures = ((torch.squeeze(pressures.cpu(), dim=1)).numpy())
+            pressures_pred  = (pressures_pred.detach().cpu().numpy())
+            log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=False)
             
 
         total_loss += loss_size.item()
