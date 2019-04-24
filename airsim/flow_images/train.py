@@ -11,6 +11,7 @@ import torch
 from torch.utils.data import DataLoader, RandomSampler
 from torch.autograd.variable import Variable
 from torchvision import transforms, utils
+from torch.optim.lr_scheduler import StepLR
 
 # Ignore warnings
 import warnings
@@ -43,7 +44,7 @@ final_net_path = dirs.out_path('training', 'final_net.pth')
 epochs = 500
 num_workers = 1
 batch_size = 64
-learning_rate = 0.001 * (batch_size / 64.0)
+learning_rate_base = 0.0004 * (batch_size / 64.0)
 
 append = False
 load_net_path = None
@@ -82,10 +83,10 @@ def main():
     
     if load_net_path:
         net.load_state_dict(torch.load(load_net_path))
-    #loss = losses.foil_mse_loss
-    loss = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
-    #optimizer = torch.optim.RMSprop(net.parameters(), lr=learning_rate,
+    loss = losses.foil_mse_loss
+    #loss = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate_base)
+    #optimizer = torch.optim.RMSprop(net.parameters(), lr=learning_rate_base,
     #        eps=1e-4, weight_decay=0, momentum=0.9)
 
     training_start_time = time.time()
@@ -114,10 +115,15 @@ def train(net, optimizer, loss, train_loader, validation_loader):
     validation_losses_percent = []
 
     best_validation = validation_min
+    
+    scheduler = StepLR(optimizer, step_size=30, gamma=0.3)
+    
     for epoch in range(start_epoch, epochs):
         info_logger.info("Starting epoch: {}".format(epoch+1))
         train_loss, train_loss_percent = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, log=True)
         validation_loss, validation_loss_percent = loss_pass(net, loss, validation_loader, epoch+1)
+        
+        scheduler.step()
 
         elapsed_epochs.append(epoch+1)
         train_losses.append(train_loss)
@@ -143,9 +149,11 @@ def train(net, optimizer, loss, train_loader, validation_loader):
             torch.save(net.state_dict(), validation_net_path)
             best_validation = validation_loss
             writer.add_scalar('Best Validation Loss', best_validation)
+
         torch.save(net.state_dict(), final_net_path)
 
 def log_epoch_loss(epochs, train_losses, valid_losses, label):
+    info_logger.info('Logging epoch loss image')
     fig = plt.figure(figsize=(8, 8))
     ax = []
     ax.append(fig.add_subplot(1, 1, 1))
@@ -160,6 +168,7 @@ def log_epoch_loss(epochs, train_losses, valid_losses, label):
 
 #Change this method to show the same plot
 def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'):        
+    info_logger.info('Logging batch image')
     x = torch.squeeze(x.cpu(), dim=1).numpy()
     y = torch.squeeze(y.cpu(), dim=1).numpy()
     y_hat  = torch.squeeze(y_hat.detach().cpu(), dim=1).numpy()
@@ -206,7 +215,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
     running_loss = 0.0
     total_loss = 0
     total_percentage_loss = 0
-
+    
     for i, data in enumerate(data_loader, 0):
         airfoils, pressures, sample_ids = data
         airfoils, pressures = Variable(airfoils), Variable(pressures)
