@@ -3,11 +3,13 @@ import torch.nn.functional as F
 from torch.nn.init import xavier_uniform
 
 import logs
-info_logger, data_logger = logs.get_training_loggers()
+info_logger, data_logger = logs.get_loggers()
 
 class GuoCNN(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, sdf):
         super(GuoCNN, self).__init__()
+
+        self.sdf = sdf
 
         self.conv1 = torch.nn.Conv2d(1, 128, kernel_size=(16, 16), stride=(16, 16))
         xavier_uniform(self.conv1.weight)
@@ -27,46 +29,24 @@ class GuoCNN(torch.nn.Module):
         xavier_uniform(self.deconv4.weight)
 
     def forward(self, x):
-        mask = x
+        if self.sdf:
+            mask = torch.where(x <= 0, torch.zeros_like(x), torch.ones_like(x))
+        else:
+            mask = x
+
         activation = F.relu
 
-        info_logger.debug("Forwards pass")
-        info_logger.debug(x.size())
-
         x = activation(self.conv1(x))
-        info_logger.debug("After conv1")
-        info_logger.debug(x.size())
-
         x = activation(self.conv2(x))
-        info_logger.debug("After conv2")
-        info_logger.debug(x.size())
 
         x = x.view(-1, 4 * 4 * 512)
         x = activation(self.fc1(x))
-        info_logger.debug("After fc1")
-        info_logger.debug(x.size())
 
         x = x.view(-1, 1024, 1, 1)
         x = activation(self.deconv1(x))
-        info_logger.debug("After deconv1")
-        info_logger.debug(x.size())
-
         x = activation(self.deconv2(x))
-        info_logger.debug("After deconv2")
-        info_logger.debug(x.size())
-        #if x.sum().item() < 0.00000001:
-            #info_logger.warn("All zeros!")
-
         x = activation(self.deconv3(x))
-        info_logger.debug("After deconv3")
-        info_logger.debug(x.size())
-        #if x.sum().item() < 0.00000001:
-            #info_logger.warn("All zeros!")
-
         x = self.deconv4(x)
-        info_logger.debug("After deconv4")
-        info_logger.debug(x.size())
-        #if x.sum().item() < 0.00000001:
-            #info_logger.warn("All zeros!")
+
         x = x * mask
         return x

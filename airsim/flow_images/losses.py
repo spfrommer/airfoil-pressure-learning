@@ -65,8 +65,6 @@ def foil_mse_loss(pred, actual):
 
     # The below mask will be used later to average errors over only non-airfoil pixels
     mask = torch.where(actual == 0, torch.zeros_like(actual), torch.ones_like(actual))
-    # Zero out all predictions on the airfoil, since those don't count toward the loss
-    pred = torch.mul(pred, mask)
     # Computing the per-pixel error (not squared yet)
     errors = torch.sub(pred, actual)
     squared_errors = torch.mul(errors, errors)

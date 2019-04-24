@@ -1,13 +1,14 @@
 import os
 import sys
 import math
+import glob
 import numpy
 import json
 from lxml import etree
-import cPickle as pickle
+import pickle
 from subprocess import call
 
-import dirs
+from airsim import dirs
 
 # Adapted from Robert Lee's OpenFOAM tutorials
 # https://github.com/openfoamtutorials/OpenFOAM_Tutorials_/blob/master/HowToPlotForces/plot_forces.py 
@@ -105,3 +106,8 @@ def run_command(argv):
     return { "fatalError": fatalError,
              "keyboardInterrupt": keyboardInterrupt,
              "commandLine": " ".join(argv) }
+
+def empty_dir(path):
+    files = glob.glob(path + '/*')
+    for f in files:
+        os.remove(f)
