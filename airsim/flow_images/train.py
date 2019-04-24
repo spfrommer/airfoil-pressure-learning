@@ -25,6 +25,7 @@ import dataset
 import pdb
 
 from tensorboardX import SummaryWriter
+import matplotlib
 import matplotlib.pyplot as plt
 
 import airsim.dirs as dirs
@@ -41,10 +42,10 @@ sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
-epochs = 500
+epochs = 100
 num_workers = 0
-batch_size = 64
-learning_rate_base = 0.0004 * (batch_size / 64.0)
+batch_size = 12
+learning_rate_base = 0.0001 * (batch_size / 64.0)
 
 append = False
 load_net_path = None
@@ -81,8 +82,8 @@ def main():
 
     (train_dataset, train_loader, validation_dataset, validation_loader,
             test_dataset, test_loader) = dataset.load_data(sdf_samples, device, batch_size, num_workers)
-    net = GuoCNN(sdf=sdf_samples).to(device)
-    #net = Airflow_Unet256((1, 256, 256), sdf_samples).to(device)
+    #net = GuoCNN(sdf=sdf_samples).to(device)
+    net = Airflow_Unet256((1, 256, 256), sdf_samples).to(device)
     
     if load_net_path:
         net.load_state_dict(torch.load(load_net_path))
@@ -168,17 +169,29 @@ def log_epoch_loss(epochs, train_losses, valid_losses, label):
     plt.legend()
     writer.add_figure(label, fig)
 
+def zeros_to_nan(tensor):
+    return torch.where(tensor == 0, torch.ones(tensor.size()) * float('nan'), tensor)
+
 #Change this method to show the same plot
-def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'):        
-    x = torch.squeeze(x.cpu(), dim=1).numpy()
-    y = torch.squeeze(y.cpu(), dim=1).numpy()
-    y_hat = torch.squeeze(y_hat.detach().cpu(), dim=1).numpy()
+def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap=matplotlib.cm.coolwarm):
+    cmap.set_bad(color='black')
+    loaded = False
 
     if (len(sample_id) > 0):
         for i in range(x.shape[0]):
             if ((train and np.isin(sample_id[i], training_plots_i)) or (not train and np.isin(sample_id[i], valid_plots_i))):
+                if not loaded:
+                    if sdf_samples:
+                        x = torch.squeeze(x.cpu(), dim=1).numpy()
+                    else:
+                        x = torch.squeeze(zeros_to_nan(x.cpu()), dim=1).numpy()
+
+                    y = torch.squeeze(zeros_to_nan(y.cpu()), dim=1).numpy()
+                    y_hat  = torch.squeeze(zeros_to_nan(y_hat.detach().cpu()), dim=1).numpy()
+                    loaded = True
+
                 fig = plt.figure(figsize=(12, 12))
-                fig.suptitle('Input Image, Ground_Truth, Prediction, Absolute Difference | Epoch {}'.format(epoch))
+                fig.suptitle('Input Image, Ground_Truth, Prediction, Error | Epoch {}'.format(epoch))
                 ax = []
                 ax.append(fig.add_subplot(2, 2, 1))
                 plt.imshow(x[i, :, :], cmap=cmap)
@@ -192,7 +205,7 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'
                 ax.append(fig.add_subplot(2, 2, 4))
                 plt.imshow(y_hat[i, :, :] - y[i, :, :], cmap=cmap)
                 plt.colorbar(fraction=0.046, pad=0.04)
-                if(train):
+                if train:
                     label = 'TRAIN:Plots Id : {}'.format(sample_id[i])
                 else:
                     label = 'VALID:Plots Id : {}'.format(sample_id[i])
