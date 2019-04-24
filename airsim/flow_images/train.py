@@ -38,13 +38,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 training_plots_i = np.array([1, 2, 3, 4, 5])
 valid_plots_i = np.array([1, 2, 3, 4, 5])
 
-sdf_samples = False
+sdf_samples = True
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
 epochs = 100
 num_workers = 0
-batch_size = 12
+batch_size = 64
 learning_rate_base = 0.0001 * (batch_size / 64.0)
 
 append = False
@@ -82,8 +82,8 @@ def main():
 
     (train_dataset, train_loader, validation_dataset, validation_loader,
             test_dataset, test_loader) = dataset.load_data(sdf_samples, device, batch_size, num_workers)
-    #net = GuoCNN(sdf=sdf_samples).to(device)
-    net = Airflow_Unet256((1, 256, 256), sdf_samples).to(device)
+    net = GuoCNN(sdf=sdf_samples).to(device)
+    #net = Airflow_Unet256((1, 256, 256), sdf_samples).to(device)
     
     if load_net_path:
         net.load_state_dict(torch.load(load_net_path))
@@ -172,6 +172,15 @@ def log_epoch_loss(epochs, train_losses, valid_losses, label):
 def zeros_to_nan(tensor):
     return torch.where(tensor == 0, torch.ones(tensor.size()) * float('nan'), tensor)
 
+def render_image(image, cmap, center=True):
+    max_deviation = max(np.nanmin(image), np.nanmax(image), key=abs) 
+    if center:
+        plt.imshow(image, vmin=-max_deviation,
+                   vmax=max_deviation, cmap=cmap)
+    else:
+        plt.imshow(image, cmap=cmap)
+    plt.colorbar(fraction=0.046, pad=0.04)
+
 #Change this method to show the same plot
 def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap=matplotlib.cm.coolwarm):
     cmap.set_bad(color='black')
@@ -194,17 +203,13 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap=matplotlib
                 fig.suptitle('Input Image, Ground_Truth, Prediction, Error | Epoch {}'.format(epoch))
                 ax = []
                 ax.append(fig.add_subplot(2, 2, 1))
-                plt.imshow(x[i, :, :], cmap=cmap)
-                plt.colorbar(fraction=0.046, pad=0.04)
+                render_image(x[i, :, :], cmap, center=False)
                 ax.append(fig.add_subplot(2, 2, 2))
-                plt.imshow(y[i, :, :], cmap=cmap)
-                plt.colorbar(fraction=0.046, pad=0.04)
+                render_image(y[i, :, :], cmap)
                 ax.append(fig.add_subplot(2, 2, 3))
-                plt.imshow(y_hat[i, :, :], cmap=cmap)
-                plt.colorbar(fraction=0.046, pad=0.04)
+                render_image(y_hat[i, :, :], cmap)
                 ax.append(fig.add_subplot(2, 2, 4))
-                plt.imshow(y_hat[i, :, :] - y[i, :, :], cmap=cmap)
-                plt.colorbar(fraction=0.046, pad=0.04)
+                render_image(y_hat[i, :, :] - y[i, :, :], cmap)
                 if train:
                     label = 'TRAIN:Plots Id : {}'.format(sample_id[i])
                 else:
