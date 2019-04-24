@@ -25,6 +25,7 @@ import dataset
 import pdb
 
 from tensorboardX import SummaryWriter
+import matplotlib
 import matplotlib.pyplot as plt
 
 import airsim.dirs as dirs
@@ -169,12 +170,16 @@ def log_epoch_loss(epochs, train_losses, valid_losses, label):
     plt.legend()
     writer.add_figure(label, fig)
 
+def zeros_to_nan(tensor):
+    return torch.where(tensor == 0, torch.ones(tensor.size()) * float('nan'), tensor)
+
 #Change this method to show the same plot
-def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'):        
+def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap=matplotlib.cm.coolwarm):
     info_logger.info('Logging batch image')
-    x = torch.squeeze(x.cpu(), dim=1).numpy()
-    y = torch.squeeze(y.cpu(), dim=1).numpy()
-    y_hat  = torch.squeeze(y_hat.detach().cpu(), dim=1).numpy()
+    x = torch.squeeze(zeros_to_nan(x).cpu(), dim=1).numpy()
+    y = torch.squeeze(zeros_to_nan(y).cpu(), dim=1).numpy()
+    y_hat  = torch.squeeze(zeros_to_nan(y_hat).detach().cpu(), dim=1).numpy()
+    cmap.set_bad(color='black')
 
     if (len(sample_id) > 0):
         for i in range(x.shape[0]):
