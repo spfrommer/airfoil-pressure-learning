@@ -154,18 +154,21 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap='coolwarm'
     if(len(sample_id > 0)):
         for i in range(x.shape[0]):
             if ((train and np.isin(sample_id[i], training_plots_i)) or (not train and np.isin(sample_id[i], valid_plots_i))):
-                fig = plt.figure(figsize=(10, 10))
-                fig.suptitle('Input Image, Ground_Truth, Prediction - Epoch {}'.format(epoch))
+                fig = plt.figure(figsize=(12, 12))
+                fig.suptitle('Input Image, Ground_Truth, Prediction, Absolute Difference- Epoch {}'.format(epoch))
                 ax = []
-                ax.append(fig.add_subplot(1, 3, 1))
+                ax.append(fig.add_subplot(2, 2, 1))
                 plt.imshow(x[i, :, :], cmap=cmap)
-                plt.colorbar()
-                ax.append(fig.add_subplot(1, 3, 2))
+                plt.colorbar(fraction=0.046, pad=0.04)
+                ax.append(fig.add_subplot(2, 2, 2))
                 plt.imshow(y[i, :, :], cmap=cmap)
-                plt.colorbar()
-                ax.append(fig.add_subplot(1, 3, 3))
+                plt.colorbar(fraction=0.046, pad=0.04)
+                ax.append(fig.add_subplot(2, 2, 3))
                 plt.imshow(y_hat[i, :, :], cmap=cmap)
-                plt.colorbar()
+                plt.colorbar(fraction=0.046, pad=0.04)
+                ax.append(fig.add_subplot(2, 2, 4))
+                plt.imshow(y_hat[i, :, :] - y[i, :, :], cmap=cmap)
+                plt.colorbar(fraction=0.046, pad=0.04)
                 if(train):
                     label = 'TRAIN:Plots Id : {}'.format(sample_id[i])
                 else:
