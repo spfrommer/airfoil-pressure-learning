@@ -30,7 +30,6 @@ import airsim.dirs as dirs
 from airsim.io_utils import empty_dir
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-writer = SummaryWriter()
 
 training_plots_i = np.array([1, 2, 3, 4, 5])
 valid_plots_i = np.array([1, 2, 3, 4, 5])
@@ -41,7 +40,7 @@ sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
-epochs = 250
+epochs = 3
 num_workers = 0
 batch_size = 3
 learning_rate = 0.001 * (batch_size / 64.0)
@@ -68,6 +67,8 @@ if resume:
     validation_min = np.min(array[:,2])
 else:
     empty_dir(dirs.out_path('training'))
+
+writer = SummaryWriter(dirs.out_path('training', 'runs'))
 
 def main():
     if num_workers > 0:
@@ -138,9 +139,9 @@ def log_epoch_loss(epoch_num, train_loss, validation_loss):
     valid_loss_idx.append(validation_loss)
     ax = []
     ax.append(fig.add_subplot(1, 1, 1))
-    plt.title("AirfoilMSE Test/Validation Loss across each Epoch")
+    plt.title("MSE Train / Validation Loss across each Epoch")
     plt.xlabel("Epoch")
-    plt.ylabel("AirfoilMSE ")
+    plt.ylabel("MSE")
     plt.plot(epoch_idx, train_loss_idx, color='#85144b', label='train_loss', lw=3)
     plt.plot(epoch_idx, valid_loss_idx, color='#FF851B', label='valid_loss', lw=3)
     plt.grid(True)

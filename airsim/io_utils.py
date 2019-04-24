@@ -108,6 +108,6 @@ def run_command(argv):
              "commandLine": " ".join(argv) }
 
 def empty_dir(path):
-    files = glob.glob(path + '/*')
-    for f in files:
-        os.remove(f)
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            os.unlink(os.path.join(root, f))
