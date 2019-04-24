@@ -42,8 +42,8 @@ validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
 epochs = 500
-num_workers = 1
-batch_size = 64
+num_workers = 0
+batch_size = 4
 learning_rate_base = 0.0004 * (batch_size / 64.0)
 
 append = False
@@ -59,15 +59,18 @@ if resume:
     start_epoch = np.size(array, 0)
     validation_min = np.min(array[:,2])
 
-writer = SummaryWriter(dirs.out_path('training', 'runs'))
+writer = None
 
 def main():
+    global writer
     if num_workers > 0:
         setup_multiprocessing()
         
     if not resume:
         empty_dir(dirs.out_path('training'))
         empty_dir(dirs.out_path('training', 'runs'))
+    
+    writer = SummaryWriter(dirs.out_path('training', 'runs'))
 
     info_logger, data_logger = logs.create_loggers(training=True, append=append)
 
@@ -231,7 +234,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
             loss_size.backward()
             optimizer.step()
         
-        if epoch_num % render_every == 0:
+        if (epoch_num-1) % render_every == 0:
             log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=(optimizer is not None))
             
         total_loss += loss_size.item()
