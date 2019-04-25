@@ -38,14 +38,14 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 training_plots_i = np.array([1, 2, 3, 4, 5])
 valid_plots_i = np.array([1, 2, 3, 4, 5])
 
-sdf_samples = True
+sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
 epochs = 100
 num_workers = 0
-batch_size = 64
-learning_rate_base = 0.0001 * (batch_size / 64.0)
+batch_size = 8
+learning_rate_base = 0.0004 * (batch_size / 64.0)
 
 append = False
 load_net_path = None
@@ -245,16 +245,16 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
         pressures_pred = net(airfoils)
         loss_size = loss(pressures_pred, pressures)
         percentage_loss_size = losses.median_percentage_loss(pressures_pred, pressures)
-        
+
         if optimizer:
             loss_size.backward()
             optimizer.step()
         
         if (epoch_num-1) % render_every == 0:
             log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=(optimizer is not None))
-            
+        
         total_loss += loss_size.item()
-        total_percentage_loss = percentage_loss_size.item()
+        total_percentage_loss += percentage_loss_size.item()
         if log:
             running_loss += loss_size.item()
 
@@ -267,7 +267,6 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
                 writer.add_scalar('Time Taken', timetaken)
                 running_loss = 0.0
                 start_time = time.time()
-
     return total_loss / len(data_loader.dataset), total_percentage_loss / len(data_loader.dataset)
 
 if __name__ == "__main__":main()
