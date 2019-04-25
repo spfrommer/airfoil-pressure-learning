@@ -113,9 +113,10 @@ def main():
         info_logger.exception("Error in training")
 
     info_logger.info("Training finished, took {:.2f}s".format(time.time() - training_start_time))
-    test_loss, test_loss_percent = loss_pass(net, loss, test_loader, -1)
+    test_loss, test_loss_percent, test_loss_mae = loss_pass(net, loss, test_loader, -1)
     info_logger.info("Test loss = {:.12f}".format(test_loss))
     info_logger.info("Test loss percent = {:.12f}".format(test_loss_percent))
+    info_logger.info("Test loss mae = {:.12f}".format(test_loss_mae))
     writer.add_scalar('Test Loss', test_loss)
 
 def setup_multiprocessing():
@@ -137,14 +138,14 @@ def train(net, optimizer, loss, train_loader, validation_loader):
     
     for epoch in range(start_epoch, epochs):
         info_logger.info("Starting epoch: {}".format(epoch+1))
-        train_loss, train_loss_percent = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, log=True)
-        validation_loss, validation_loss_percent = loss_pass(net, loss, validation_loader, epoch+1)
+        train_loss, train_loss_percent, train_loss_mae = loss_pass(net, loss, train_loader, epoch+1, optimizer=optimizer, log=True)
+        validation_loss, validation_loss_percent, validation_loss_mae = loss_pass(net, loss, validation_loader, epoch+1)
         
         scheduler.step()
 
         elapsed_epochs.append(epoch+1)
-        train_losses.append(math.sqrt(train_loss) * 400)
-        validation_losses.append(math.sqrt(validation_loss) * 400)
+        train_losses.append(train_loss_mae * 400)
+        validation_losses.append(validation_loss_mae * 400)
         train_losses_percent.append(train_loss_percent * 100)
         validation_losses_percent.append(validation_loss_percent * 100)
 
@@ -156,10 +157,14 @@ def train(net, optimizer, loss, train_loader, validation_loader):
         info_logger.info("Finished epoch {}".format(epoch+1))
         info_logger.info("Train loss = {:.12f}".format(train_loss))
         info_logger.info("Train loss percent = {:.12f}".format(train_loss_percent))
+        info_logger.info("Train loss mae = {:.12f}".format(train_loss_mae))
         info_logger.info("Validation loss = {:.12f}".format(validation_loss))
         info_logger.info("Validation loss percent = {:.12f}".format(validation_loss_percent))
-        data_logger.info("{}, {:12f}, {:12f}, {:12f}, {:12f}".format(epoch,
-            train_loss, validation_loss, train_loss_percent, validation_loss_percent))
+        info_logger.info("Validation loss mae = {:.12f}".format(validation_loss_mae))
+
+        data_logger.info("{}, {:12f}, {:12f}, {:12f}, {:12f}, {:12f}, {:12f} ".format(epoch,
+            train_loss, validation_loss, train_loss_percent, validation_loss_percent,
+            train_loss_mae, validation_loss_mae))
 
         if validation_loss < best_validation:
             info_logger.info("New best validation! Saving")
@@ -247,6 +252,7 @@ def find_matching_ids(batch_sample_ids, target_sample_ids):
 
 def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
     batches = len(data_loader)
+    samples = len(data_loader.dataset)
     if batches == 0:
         return 0
 
@@ -259,6 +265,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
     running_loss = 0.0
     total_loss = 0
     total_percentage_loss = 0
+    total_abs_loss = 0
     
     for i, data in enumerate(data_loader, 0):
         airfoils, pressures, sample_ids = data
@@ -270,6 +277,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
         pressures_pred = net(airfoils)
         loss_size = loss(pressures_pred, pressures)
         percentage_loss_size = losses.median_percentage_loss(pressures_pred, pressures)
+        abs_loss_size = losses.foil_mae_loss(pressures_pred, pressures)
 
         if optimizer:
             loss_size.backward()
@@ -280,6 +288,7 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
         
         total_loss += loss_size.item()
         total_percentage_loss += percentage_loss_size.item()
+        total_abs_loss += abs_loss_size.item()
         if log:
             running_loss += loss_size.item()
 
@@ -292,6 +301,6 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
                 writer.add_scalar('Time Taken', timetaken)
                 running_loss = 0.0
                 start_time = time.time()
-    return total_loss / len(data_loader.dataset), total_percentage_loss / len(data_loader.dataset)
+    return total_loss / samples, total_percentage_loss / samples, total_abs_loss / samples
 
 if __name__ == "__main__":main()

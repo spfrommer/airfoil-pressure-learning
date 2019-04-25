@@ -73,8 +73,28 @@ def foil_mse_loss(pred, actual):
     denominators_per_sum = mask.view(size[0], size[1], -1).sum(2)
     denominators_per_sum = torch.where(denominators_per_sum == 0,
             torch.ones_like(denominators_per_sum) * (256**2), denominators_per_sum)
-
+    
     mse_per_image = torch.div(sum_squared_errors, denominators_per_sum)
 
     mse = torch.sum(mse_per_image)
     return mse
+
+def foil_mae_loss(pred, actual):
+    size = list(actual.shape)
+
+    # The below mask will be used later to average errors over only non-airfoil pixels
+    mask = torch.where(actual == 0, torch.zeros_like(actual), torch.ones_like(actual))
+    # Computing the per-pixel error (not squared yet)
+    errors = torch.sub(pred, actual)
+    abs_errors = torch.abs(errors)
+
+    sum_abs_errors = abs_errors.view(size[0], size[1], -1).sum(2)
+    denominators_per_sum = mask.view(size[0], size[1], -1).sum(2)
+    denominators_per_sum = torch.where(denominators_per_sum == 0,
+            torch.ones_like(denominators_per_sum) * (256**2), denominators_per_sum)
+    
+    mae_per_image = torch.div(sum_abs_errors, denominators_per_sum)
+
+    mae = torch.sum(mae_per_image)
+    return mae
+
