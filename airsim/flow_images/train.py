@@ -5,6 +5,7 @@ path = op.dirname(op.dirname(op.dirname(op.abspath(__file__))))
 print('Setting project root path: ' + path)
 sys.path.append(path)
 
+import math
 import numpy as np
 import time
 import torch
@@ -31,9 +32,9 @@ import matplotlib.pyplot as plt
 import airsim.dirs as dirs
 from airsim.io_utils import empty_dir
 
-font_small = 14
-font_medium = 17
-font_big = 20
+font_small = 18
+font_medium = 20
+font_big = 22
 
 plt.rc('font', size=font_small)
 plt.rc('axes', titlesize=font_small)
@@ -212,16 +213,28 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap=matplotlib
                     loaded = True
 
                 fig = plt.figure(figsize=(12, 12))
-                fig.suptitle('Input Image, Ground Truth, Prediction, Error | Epoch {}'.format(epoch))
+                fig.suptitle('Pressure Fields | Epoch {}'.format(epoch))
                 ax = []
                 ax.append(fig.add_subplot(2, 2, 1))
+                plt.title('Input Image')
                 render_image(x[i, :, :], cmap, center=False)
                 ax.append(fig.add_subplot(2, 2, 2))
+                plt.title('Ground Truth')
                 render_image(y[i, :, :], cmap)
                 ax.append(fig.add_subplot(2, 2, 3))
+                plt.title('Prediction', y=-0.1)
                 render_image(y_hat[i, :, :], cmap)
                 ax.append(fig.add_subplot(2, 2, 4))
+                plt.title('Error', y=-0.1)
                 render_image(y_hat[i, :, :] - y[i, :, :], cmap)
+
+                for axis in ax:
+                    axis.set_xticks([])
+                    axis.set_yticks([])
+
+                plt.tight_layout()
+                plt.subplots_adjust(hspace=-0.1, top=0.94)
+
                 if train:
                     label = 'TRAIN:Plots Id : {}'.format(sample_id[i])
                 else:
