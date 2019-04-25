@@ -31,6 +31,18 @@ import matplotlib.pyplot as plt
 import airsim.dirs as dirs
 from airsim.io_utils import empty_dir
 
+font_small = 14
+font_medium = 17
+font_big = 20
+
+plt.rc('font', size=font_small)
+plt.rc('axes', titlesize=font_small)
+plt.rc('axes', labelsize=font_medium)
+plt.rc('xtick', labelsize=font_small)
+plt.rc('ytick', labelsize=font_small)
+plt.rc('legend', fontsize=font_small)
+plt.rc('figure', titlesize=font_big)
+
 resume = False
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -42,7 +54,7 @@ sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
-epochs = 100
+epochs = 80
 num_workers = 0
 batch_size = 8
 learning_rate_base = 0.0004 * (batch_size / 64.0)
@@ -120,7 +132,7 @@ def train(net, optimizer, loss, train_loader, validation_loader):
 
     best_validation = validation_min
     
-    scheduler = StepLR(optimizer, step_size=30, gamma=0.3)
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.3)
     
     for epoch in range(start_epoch, epochs):
         info_logger.info("Starting epoch: {}".format(epoch+1))
@@ -130,13 +142,13 @@ def train(net, optimizer, loss, train_loader, validation_loader):
         scheduler.step()
 
         elapsed_epochs.append(epoch+1)
-        train_losses.append(train_loss)
-        validation_losses.append(validation_loss)
+        train_losses.append(math.sqrt(train_loss) * 400)
+        validation_losses.append(math.sqrt(validation_loss) * 400)
         train_losses_percent.append(train_loss_percent * 100)
         validation_losses_percent.append(validation_loss_percent * 100)
 
         log_epoch_loss(elapsed_epochs, train_losses,
-                       validation_losses, 'MSE Loss')
+                        validation_losses, 'Mean Absolute Loss')
         log_epoch_loss(elapsed_epochs, train_losses_percent,
                        validation_losses_percent, 'Median Percent Error')
 
@@ -200,7 +212,7 @@ def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap=matplotlib
                     loaded = True
 
                 fig = plt.figure(figsize=(12, 12))
-                fig.suptitle('Input Image, Ground_Truth, Prediction, Error | Epoch {}'.format(epoch))
+                fig.suptitle('Input Image, Ground Truth, Prediction, Error | Epoch {}'.format(epoch))
                 ax = []
                 ax.append(fig.add_subplot(2, 2, 1))
                 render_image(x[i, :, :], cmap, center=False)
