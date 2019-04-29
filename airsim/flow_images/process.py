@@ -46,6 +46,7 @@ empty_dir(dirs.out_path('processed', 'validation'))
 empty_dir(dirs.out_path('processed', 'test'))
 
 output_images = True
+farfield_remove = True
 airfoil_dataset = AirfoilDataset(dirs.out_path('images_sample'))
 
 #test_prefixes = ["s1223"]
@@ -103,6 +104,12 @@ for j, i in enumerate(data_indices):
     range_diff = pressure_range[1] - pressure_range[0] 
     range_increment = range_diff / 256.0
     pressure_mask = (tensor[1, :, :] - 0.5) * range_diff + tensor[2, :, :] * range_increment
+    
+    if farfield_remove:
+        avg_corners = torch.mean(torch.tensor([pressure_mask[0,0], pressure_mask[0,-1],
+            pressure_mask[-1,0], pressure_mask[-1,-1]]))
+        pressure_mask = pressure_mask - avg_corners
+
     # Zero out elements within airfoil
     pressure_mask = pressure_mask * airfoil_mask
     torch.save(pressure_mask, dirs.out_path('processed', save_dir, 'p_{}.pt'.format(i)))
