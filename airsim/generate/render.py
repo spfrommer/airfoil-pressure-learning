@@ -29,22 +29,12 @@ def make_color_transfer(scalar_range, human_colored):
             range_interp = scalar_range[0] + delta * i
             color_transfer.AddRGBPoint(range_interp, 1, i / 256.0, 0)
             color_transfer.AddRGBPoint(range_interp + delta - 0.00000000001, 1, i / 256.0, 1)
-        #color_transfer.SetBelowRangeColor(1, 0, 0)
-        #color_transfer.SetAboveRangeColor(1, 1, 1)
 
         color_transfer.SetBelowRangeColor(0, 0, 1)
         color_transfer.SetAboveRangeColor(0, 1, 0)
 
-        #range_delta = scalar_range[1] - scalar_range[0]
-        #color_transfer.AddRGBPoint(scalar_range[0], 1, 0, 0)
-        #color_transfer.AddRGBPoint(scalar_range[0] + range_delta / 2, 1, 1, 0)
-        #color_transfer.AddRGBPoint(scalar_range[1], 1, 0, 1)
-        #color_transfer.SetBelowRangeColor(0, 0, 1)
-        #color_transfer.SetAboveRangeColor(0, 1, 0)
     color_transfer.SetUseAboveRangeColor(True)
     color_transfer.SetUseBelowRangeColor(True)
-    #color_transfer.SetNanColorRGBA(0, 1, 0, 1)
-    #color_transfer.SetNanOpacity(1)
     color_transfer.SetColorSpaceToRGB()
     return color_transfer
 

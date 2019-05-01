@@ -1,0 +1,8 @@
+numpy
+colorama
+matplotlib
+scipy
+tensorboard
+tensorboardx
+tensorflow
+pytorch

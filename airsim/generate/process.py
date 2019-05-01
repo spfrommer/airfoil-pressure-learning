@@ -46,8 +46,8 @@ empty_dir(dirs.out_path('processed', 'validation'))
 empty_dir(dirs.out_path('processed', 'test'))
 
 output_images = True
-farfield_remove = True
-airfoil_dataset = AirfoilDataset(dirs.out_path('images_sample'))
+farfield_remove = False
+airfoil_dataset = AirfoilDataset(dirs.out_path('images'))
 
 #test_prefixes = ["s1223"]
 #data_splits = np.array([0.60, 0.75, 1]) * len(airfoil_dataset)

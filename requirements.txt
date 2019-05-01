@@ -1,7 +1,0 @@
-pyfoam
-pygmsh
-numpy
-colorama
-lmxl
-matplotlib
-scipy

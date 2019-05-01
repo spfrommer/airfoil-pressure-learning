@@ -1,9 +1,6 @@
-import sys
-sys.path.append("/home/dhruvkar/Desktop/Robotics/rp/Airflownet/src")
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 #256 x 256 Airflow Images
 class Airflow_Unet256(nn.Module):

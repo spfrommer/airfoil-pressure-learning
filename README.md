@@ -1,3 +1,14 @@
+## FOR TRAINING
+# Requirements
+Just go into airsim/train and pip install requirements.txt
+
+# Running
+python airsim/train/train.py
+To visualize output, run:
+tensorboard --logdir=./out/training/runs
+
+## FOR GENERATING DATA
+NOT SURE IF INSTRUCTIONS ARE CORRECT, MIGHT BE COMPLICATIONS
 # Requirements
 Python 2.7
 pip
@@ -18,4 +29,4 @@ pip install -r requirements.txt
 npm install
 
 # Running
-python airsim/flow_images/generate.py
+python airsim/generate/generate.py

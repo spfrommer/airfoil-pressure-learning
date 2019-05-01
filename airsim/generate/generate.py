@@ -60,6 +60,7 @@ for airfoil_name in os.listdir(dirs.RES_DIR):
                 print("\n" + Fore.RED + "Keyboard interrupt")
                 sys.exit();
             except BaseException as e:
+                print e
                 print("\n" + Fore.RED +
                         "Failed on airfoil: " + airfoil_name)
         else:

@@ -21,41 +21,22 @@ warnings.filterwarnings("ignore")
 import logs
 import losses
 from guocnn import GuoCNN
-from airflow_unet import Airflow_Unet256
+from unet import Airflow_Unet256
 import dataset
-import pdb
-
-from tensorboardX import SummaryWriter
-import matplotlib
-import matplotlib.pyplot as plt
+import visualize
 
 import airsim.dirs as dirs
 from airsim.io_utils import empty_dir
-
-font_small = 18
-font_medium = 20
-font_big = 22
-
-plt.rc('font', size=font_small)
-plt.rc('axes', titlesize=font_small)
-plt.rc('axes', labelsize=font_medium)
-plt.rc('xtick', labelsize=font_small)
-plt.rc('ytick', labelsize=font_small)
-plt.rc('legend', fontsize=font_small)
-plt.rc('figure', titlesize=font_big)
 
 resume = False
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-training_plots_i = np.array([1, 2, 3, 4, 5])
-valid_plots_i = np.array([1, 2, 3, 4, 5])
-
 sdf_samples = False
 validation_net_path = dirs.out_path('training', 'validation_net.pth')
 final_net_path = dirs.out_path('training', 'final_net.pth')
 
-epochs = 80
+epochs = 20
 num_workers = 0
 batch_size = 8
 learning_rate_base = 0.0004 * (batch_size / 64.0)
@@ -73,19 +54,16 @@ if resume:
     start_epoch = np.size(array, 0)
     validation_min = np.min(array[:,2])
 
-writer = None
-
 def main():
-    global writer
     if num_workers > 0:
         setup_multiprocessing()
         
     if not resume:
         empty_dir(dirs.out_path('training'))
         empty_dir(dirs.out_path('training', 'runs'))
-    
-    writer = SummaryWriter(dirs.out_path('training', 'runs'))
 
+    visualize.init()
+    
     info_logger, data_logger = logs.create_loggers(training=True, append=append)
 
     if resume:
@@ -100,8 +78,8 @@ def main():
     
     if load_net_path:
         net.load_state_dict(torch.load(load_net_path))
+
     loss = losses.foil_mse_loss
-    #loss = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate_base)
     #optimizer = torch.optim.RMSprop(net.parameters(), lr=learning_rate_base,
     #        eps=1e-4, weight_decay=0, momentum=0.9)
@@ -117,7 +95,6 @@ def main():
     info_logger.info("Test loss = {:.12f}".format(test_loss))
     info_logger.info("Test loss percent = {:.12f}".format(test_loss_percent))
     info_logger.info("Test loss mae = {:.12f}".format(test_loss_mae))
-    writer.add_scalar('Test Loss', test_loss)
 
 def setup_multiprocessing():
     import torch.multiprocessing as mp
@@ -144,14 +121,15 @@ def train(net, optimizer, loss, train_loader, validation_loader):
         scheduler.step()
 
         elapsed_epochs.append(epoch+1)
+        # Because we scaled the ground truth labels by 400 in process.py
         train_losses.append(train_loss_mae * 400)
         validation_losses.append(validation_loss_mae * 400)
         train_losses_percent.append(train_loss_percent * 100)
         validation_losses_percent.append(validation_loss_percent * 100)
 
-        log_epoch_loss(elapsed_epochs, train_losses,
+        visualize.log_epoch_loss(elapsed_epochs, train_losses,
                         validation_losses, 'Mean Absolute Loss')
-        log_epoch_loss(elapsed_epochs, train_losses_percent,
+        visualize.log_epoch_loss(elapsed_epochs, train_losses_percent,
                        validation_losses_percent, 'Median Percent Error')
 
         info_logger.info("Finished epoch {}".format(epoch+1))
@@ -170,98 +148,18 @@ def train(net, optimizer, loss, train_loader, validation_loader):
             info_logger.info("New best validation! Saving")
             torch.save(net.state_dict(), validation_net_path)
             best_validation = validation_loss
-            writer.add_scalar('Best Validation Loss', best_validation)
 
         torch.save(net.state_dict(), final_net_path)
-
-def log_epoch_loss(epochs, train_losses, valid_losses, label):
-    fig = plt.figure(figsize=(8, 8))
-    ax = []
-    ax.append(fig.add_subplot(1, 1, 1))
-    plt.title("Train & Validation Losses")
-    plt.xlabel("Epoch")
-    plt.ylabel(label)
-    plt.plot(epochs, train_losses, color='#85144b', label='train_loss', lw=3)
-    plt.plot(epochs, valid_losses, color='#FF851B', label='valid_loss', lw=3)
-    plt.grid(True)
-    plt.legend()
-    writer.add_figure(label, fig)
-
-def zeros_to_nan(tensor):
-    return torch.where(tensor == 0, torch.ones(tensor.size()) * float('nan'), tensor)
-
-def render_image(image, cmap, center=True):
-    max_deviation = max(np.nanmin(image), np.nanmax(image), key=abs) 
-    if center:
-        plt.imshow(image, vmin=-max_deviation,
-                   vmax=max_deviation, cmap=cmap)
-    else:
-        plt.imshow(image, cmap=cmap)
-    plt.colorbar(fraction=0.046, pad=0.04)
-
-#Change this method to show the same plot
-def log_batch_output(x, y, y_hat, sample_id, epoch, train=False, cmap=matplotlib.cm.coolwarm):
-    cmap.set_bad(color='black')
-    loaded = False
-
-    if (len(sample_id) > 0):
-        for i in range(x.shape[0]):
-            if ((train and np.isin(sample_id[i], training_plots_i)) or (not train and np.isin(sample_id[i], valid_plots_i))):
-                if not loaded:
-                    if sdf_samples:
-                        x = torch.squeeze(x.cpu(), dim=1).numpy()
-                    else:
-                        x = torch.squeeze(zeros_to_nan(x.cpu()), dim=1).numpy()
-
-                    y = torch.squeeze(zeros_to_nan(y.cpu()), dim=1).numpy()
-                    y_hat  = torch.squeeze(zeros_to_nan(y_hat.detach().cpu()), dim=1).numpy()
-                    loaded = True
-
-                fig = plt.figure(figsize=(12, 12))
-                fig.suptitle('Pressure Fields | Epoch {}'.format(epoch))
-                ax = []
-                ax.append(fig.add_subplot(2, 2, 1))
-                plt.title('Input Image')
-                render_image(x[i, :, :], cmap, center=False)
-                ax.append(fig.add_subplot(2, 2, 2))
-                plt.title('Ground Truth')
-                render_image(y[i, :, :], cmap)
-                ax.append(fig.add_subplot(2, 2, 3))
-                plt.title('Prediction', y=-0.1)
-                render_image(y_hat[i, :, :], cmap)
-                ax.append(fig.add_subplot(2, 2, 4))
-                plt.title('Error', y=-0.1)
-                render_image(y_hat[i, :, :] - y[i, :, :], cmap)
-
-                for axis in ax:
-                    axis.set_xticks([])
-                    axis.set_yticks([])
-
-                plt.tight_layout()
-                plt.subplots_adjust(hspace=-0.1, top=0.94)
-
-                if train:
-                    label = 'TRAIN:Plots Id : {}'.format(sample_id[i])
-                else:
-                    label = 'VALID:Plots Id : {}'.format(sample_id[i])
-                writer.add_figure(label, fig)
-
-
-def find_matching_ids(batch_sample_ids, target_sample_ids):
-    return np.in1d(batch_sample_ids, target_sample_ids)
 
 def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
     batches = len(data_loader)
     samples = len(data_loader.dataset)
-    if batches == 0:
-        return 0
+    if batches == 0: return 0
 
     if log:
         print_every = 5
         start_time = time.time()
     
-    render_every = 1
-
     running_loss = 0.0
     total_loss = 0
     total_percentage_loss = 0
@@ -283,22 +181,21 @@ def loss_pass(net, loss, data_loader, epoch_num, optimizer=None, log=False):
             loss_size.backward()
             optimizer.step()
         
-        if (epoch_num-1) % render_every == 0:
-            log_batch_output(airfoils, pressures, pressures_pred, sample_ids, epoch_num, train=(optimizer is not None))
+        visualize.log_batch_output(airfoils, pressures, pressures_pred, sample_ids,
+                epoch_num, sdf_samples=sdf_samples, train=(optimizer is not None))
         
         total_loss += loss_size.item()
         total_percentage_loss += percentage_loss_size.item()
         total_abs_loss += abs_loss_size.item()
+
         if log:
             running_loss += loss_size.item()
 
-            #Print every nth batch of an epoch
             if (i + 1) % (print_every + 1) == 0:
                 timetaken = time.time() - start_time
                 info_logger.info("Loss: {:.12f} took: {:.2f}s".format(
                         running_loss / (print_every * data_loader.batch_size),
                         timetaken))
-                writer.add_scalar('Time Taken', timetaken)
                 running_loss = 0.0
                 start_time = time.time()
     return total_loss / samples, total_percentage_loss / samples, total_abs_loss / samples
